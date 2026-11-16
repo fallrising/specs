@@ -20,6 +20,7 @@
 - SDD PR 等 owner 同意才合併（desk 運作方法 §0）。CI 綠不等於批准。
 - REQ／AC／里程碑編號一經合併就固定，不重用、不改號；撤回照 conventions 標記。
 - 改動已 `approved` 的內容：同一個 PR 更新該產品 `changelog.md`，寫明差異與受影響的 desk 卡。
+- 需要 owner 決定的業務問題（AC 做不到、要改使用者看得到的行為、方向或優先序）：開 issue 並加 `needs-owner` 標籤，用 repo 內的範本；規則見 desk 運作方法 §6「決策權」。技術設計不在本 repo 決定，也不為它開 `needs-owner`。
 
 ## 提交前
 
