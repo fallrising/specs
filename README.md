@@ -17,6 +17,15 @@ products/<slug>/  ──spec──▶  tasks/T-####/task.md ──▶  技術設
 | 產品 | 名稱 | 狀態 | 實作 repo | 入口 |
 | --- | --- | --- | --- | --- |
 | `sanguo-cards` | 群雄・三國卡牌（暫名），three.js 網頁卡牌對戰 | draft | 未建立 | [README](products/sanguo-cards/README.md) |
+| `mmo-economy` | MMO 經濟危機實驗室：生產、交易、查帳與政策分支 | draft | 未指定 | [README](products/mmo-economy/README.md) |
+| `space-salvage` | 太空船打撈：拆卸、供電、回收與撤離 | draft | 未指定 | [README](products/space-salvage/README.md) |
+| `spellcraft` | 魔法編譯器：組合法術、交互作用與逐步解釋 | draft | 未指定 | [README](products/spellcraft/README.md) |
+| `factory-resilience` | 工廠韌性：生產、物流、排程與故障回收 | draft | 未指定 | [README](products/factory-resilience/README.md) |
+| `solvable-mystery` | 可解推理案件：可靠線索、唯一兇手與共謀 | draft | 未指定 | [README](products/solvable-mystery/README.md) |
+| `distributed-lab` | 分散式故障實驗室：一致性、故障與恢復 | draft | 未指定 | [README](products/distributed-lab/README.md) |
+| `orbital-lab` | 軌道任務實驗室：推進、預測、會合與事件 | draft | 未指定 | [README](products/orbital-lab/README.md) |
+
+七個模型挑戰的比較方式見[共同評測規格](docs/model-challenge-evaluation.md)。每題有獨立 PRD、SDD 入口、REQ／AC、業務資料及里程碑；目前皆為草案，收錄不代表批准實作，文件檢查不代表產品驗收。
 
 ## 目錄
 
@@ -28,6 +37,7 @@ specs/
 ├── products/<slug>/
 │   ├── README.md             產品首頁：狀態、實作 repo、desk 卡、文件索引
 │   ├── prd.md                願景、對象、範圍／非目標、限制、成功指標
+│   ├── sdd.md                可選的業務 SDD 導覽與規則邊界（非技術架構）
 │   ├── requirements/*.md     依領域分檔的需求（REQ）與驗收案例（AC）
 │   ├── data/                 機器可讀的業務資料（例如卡池），項目直接取用
 │   ├── milestones.md         里程碑目標、退出條件、範圍索引（自動產生）

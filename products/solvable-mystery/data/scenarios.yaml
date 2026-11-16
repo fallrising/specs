@@ -1,0 +1,294 @@
+status: draft
+purpose: 業務情境與待驗證期望；不是實作介面或儲存格式
+expectations_status: 人工推導，尚待參考實作及獨立 solver 驗證；未宣稱已證明
+world_rules:
+  character_count: 6
+  count_includes_victim: true
+  location_count: 8
+  time_ticks: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+  movement:
+    edges_are_bidirectional: true
+    edge_duration_ticks: 1
+    shortest_travel_is_sum_of_edge_durations: true
+    departure_after_observation_at_tick: true
+    arrival_at_tick_can_satisfy_presence: true
+    may_wait_at_location: true
+    multiple_locations_at_same_tick: false
+    in_transit_counts_as_at_neither_endpoint: true
+  crime:
+    murderer_count: 1
+    killer_must_be_present_with_victim: true
+    remote_or_delayed_killing_allowed: false
+    unnamed_characters_allowed: false
+  investigation_changes_case_timeline: false
+  testimony_content_is_reliable_by_default: false
+  lying_alone_proves_murder: false
+  complete_world_uniqueness_required: false
+  minimal_subset_claimed: false
+reference_case:
+  id: manor-gallery
+  title: 畫廊封館之夜
+  characters:
+    - {id: qiao, name: 喬, role: 被害者}
+    - {id: lan, name: 蘭, role: 嫌疑人}
+    - {id: he, name: 禾, role: 嫌疑人}
+    - {id: mei, name: 梅, role: 嫌疑人}
+    - {id: wu, name: 梧, role: 嫌疑人}
+    - {id: yun, name: 雲, role: 嫌疑人}
+  locations:
+    - {id: foyer, name: 門廳}
+    - {id: gallery, name: 畫廊}
+    - {id: library, name: 圖書室}
+    - {id: kitchen, name: 廚房}
+    - {id: courtyard, name: 庭院}
+    - {id: workshop, name: 工坊}
+    - {id: study, name: 書房}
+    - {id: conservatory, name: 溫室}
+  paths:
+    - [foyer, gallery]
+    - [foyer, library]
+    - [foyer, kitchen]
+    - [foyer, courtyard]
+    - [courtyard, workshop]
+    - [library, study]
+    - [courtyard, conservatory]
+  fixed_givens:
+    victim: qiao
+    victim_is_not_a_suspect: true
+    suspects: [lan, he, mei, wu, yun]
+    crime_tick: 5
+    crime_location: gallery
+    location_graph_and_time_rules_are_public: true
+    known_murder_occurred: true
+    ground_truth_routes_are_hidden_until_reveal: true
+  ground_truth:
+    murderer: yun
+    accomplices: []
+    routes_at_ticks:
+      qiao: [foyer, gallery, gallery, gallery, gallery, gallery, gallery, gallery, gallery]
+      lan: [study, study, study, study, study, study, study, study, study]
+      he: [foyer, kitchen, kitchen, kitchen, kitchen, kitchen, kitchen, kitchen, kitchen]
+      mei: [conservatory, conservatory, conservatory, conservatory, conservatory, conservatory, conservatory, conservatory, conservatory]
+      wu: [workshop, workshop, workshop, workshop, workshop, workshop, workshop, workshop, workshop]
+      yun: [foyer, foyer, foyer, foyer, foyer, gallery, foyer, courtyard, courtyard]
+    victim_route_after_crime_means: 遺體所在，不代表被害者仍存活或行動
+    crime: {tick: 5, location: gallery, actor: yun, victim: qiao}
+    library_empty_ticks: [4, 5, 6]
+    statements:
+      - id: say-yun-library
+        speaker: yun
+        claim: {character: yun, tick: 5, location: library}
+        actually_true: false
+        claimed_knowledge: 自己所在位置
+        intent: 為自己提供虛假不在場說法
+  evidence:
+    - id: e-case
+      kind: reliable
+      source: 封館案件告示
+      fact: {victim: qiao, crime_tick: 5, crime_location: gallery}
+      acquisition: {location: gallery, action: 閱讀案件告示, requires: []}
+      initially_obtained: true
+    - id: e-lan
+      kind: reliable
+      source: 書房的具名出席記錄
+      fact: {character: lan, tick: 4, location: study}
+      acquisition: {location: study, action: 調查出席記錄, requires: [e-case]}
+    - id: e-he
+      kind: reliable
+      source: 廚房的具名簽到影像
+      fact: {character: he, tick: 4, location: kitchen}
+      acquisition: {location: kitchen, action: 查看簽到影像, requires: [e-case]}
+    - id: e-mei
+      kind: reliable
+      source: 溫室的具名澆水記錄
+      fact: {character: mei, tick: 4, location: conservatory}
+      acquisition: {location: conservatory, action: 查看澆水記錄, requires: [e-case]}
+    - id: e-wu
+      kind: reliable
+      source: 工坊的具名作業影像
+      fact: {character: wu, tick: 5, location: workshop}
+      acquisition: {location: workshop, action: 查看作業影像, requires: [e-case]}
+    - id: e-yun-says
+      kind: testimony
+      source: 雲本人
+      statement_id: say-yun-library
+      fact_of_utterance: 雲聲稱犯罪時刻自己在圖書室
+      acquisition: {location: foyer, action: 訪談雲, requires: [e-case]}
+    - id: e-library-seal
+      kind: reliable
+      source: 圖書室完整封條與室內空置記錄
+      fact: {location: library, empty_at_ticks: [4, 5, 6]}
+      acquisition: {location: library, action: 核對封條及空置記錄, requires: [e-case]}
+    - id: e-lan-copy
+      kind: reliable
+      source: 門廳公示的書房記錄副本
+      same_fact_as: e-lan
+      acquisition: {location: foyer, action: 查看公示副本, requires: [e-case]}
+  exclusion_reasoning:
+    lan: {anchor_evidence: e-lan, earliest_arrival_gallery: 7, misses_crime_tick: true}
+    he: {anchor_evidence: e-he, earliest_arrival_gallery: 6, misses_crime_tick: true}
+    mei: {anchor_evidence: e-mei, earliest_arrival_gallery: 7, misses_crime_tick: true}
+    wu: {anchor_evidence: e-wu, same_tick_other_location: workshop, misses_crime_tick: true}
+    yun: {feasible_route: [foyer, gallery], departure_tick: 4, arrival_tick: 5}
+  additional_world_witness:
+    description: 不改變可靠證據與兇手，改變未被觀察到的晚段行程
+    replace_route_at_ticks:
+      yun: [foyer, foyer, foyer, foyer, foyer, gallery, foyer, kitchen, kitchen]
+    expected_murderer: yun
+    expected_full_world_identical: false
+invalid_worlds:
+  impossible_travel:
+    replace_route_at_ticks:
+      yun: [foyer, foyer, foyer, foyer, study, gallery, foyer, courtyard, courtyard]
+    expected_reason: 書房到畫廊的最短耗時大於相鄰時間點間隔
+    expected_publishable: false
+diagnostic_evidence:
+  - id: x-lan-gallery
+    kind: reliable
+    source: 人為注入的矛盾測試記錄，非合法出題線索
+    fact: {character: lan, tick: 4, location: gallery}
+evidence_sets:
+  complete:
+    evidence_ids: [e-case, e-lan, e-he, e-mei, e-wu]
+    expected_candidates: [yun]
+    expected_status: 唯一兇手
+    minimal_claim: false
+  insufficient:
+    evidence_ids: [e-case, e-lan, e-he, e-mei]
+    expected_candidates: [wu, yun]
+    expected_status: 資訊不足
+    alternative_witness:
+      murderer: wu
+      wu_route_at_ticks: [foyer, foyer, foyer, foyer, foyer, gallery, foyer, courtyard, workshop]
+      yun_route_at_ticks: [foyer, foyer, foyer, foyer, foyer, foyer, foyer, courtyard, courtyard]
+      other_routes: 同 reference_case
+  contradictory:
+    evidence_ids: [e-case, e-lan, x-lan-gallery]
+    expected_candidates: []
+    expected_status: 證據矛盾
+    conflicting_evidence_ids: [e-lan, x-lan-gallery]
+  with_redundancy:
+    evidence_ids: [e-case, e-lan, e-he, e-mei, e-wu, e-lan-copy]
+    removable_redundant_id: e-lan-copy
+    expected_candidates: [yun]
+    expected_status: 唯一兇手
+    minimal_claim: false
+testimony_checks:
+  refuted_alibi:
+    testimony_id: e-yun-says
+    refuting_evidence_id: e-library-seal
+    expected_claim_status: 已被反駁
+    expected_reliable_evidence_state: 一致
+    reason: 圖書室空置記錄排除雲在該時刻位於圖書室的說法
+acquisition_routes:
+  - {id: clockwise, actions_at: [gallery, study, kitchen, conservatory, workshop, foyer, library]}
+  - {id: reverse, actions_at: [gallery, library, foyer, workshop, conservatory, kitchen, study]}
+  # 玩家走訪是偵查介面行為，不受犯罪時間軸的剩餘時間限制。
+review_fixture:
+  evidence_ids: [e-lan, e-yun-says, e-library-seal]
+  visible_fields: [來源, 取得方式, 關聯時間, 原命題, 可靠性類別]
+submission_rules:
+  judged_evidence: 玩家提交時引用、且已取得的可靠證據；證詞可以引用，但不當作限制可行世界的可靠證據。
+  statuses_before_reveal:
+    已被證據支持: 引用的可靠證據下，被指控者是唯一可行兇手
+    尚未被證據證明: 被指控者仍可行，但還有其他可行兇手
+    指控不成立: 引用的可靠證據已排除被指控者
+    證據矛盾: 引用的可靠證據沒有任何可行世界
+  no_answer_leak: 揭曉前的狀態只由引用的證據決定，不讀取真相；對真兇與其他仍可行的嫌疑人顯示相同的「尚未被證據證明」。
+  after_reveal_annotation: 揭曉後才可把先前「尚未被證據證明」且指控對象正是真兇的提交標註為「猜中但未被證據證明」。
+submission_fixtures:
+  correct_guess_without_proof:
+    suspect: yun
+    acquired_set: insufficient
+    cited: 全部已取得證據
+    expected_status: 尚未被證據證明
+    expected_annotation_after_reveal: 猜中但未被證據證明
+    after_acquiring_set: complete
+    expected_status_after: 已被證據支持
+  other_feasible_suspect_same_status:
+    suspect: wu
+    acquired_set: insufficient
+    cited: 全部已取得證據
+    expected_status: 尚未被證據證明
+    must_equal_status_of: correct_guess_without_proof
+  excluded_suspect:
+    suspect: lan
+    acquired_set: complete
+    cited: 全部已取得證據
+    expected_status: 指控不成立
+    excluding_evidence_id: e-lan
+reveal_fixture:
+  reveal_requires_explicit_action: true
+  contents: [真實犯罪事件, 真實角色路徑, 每位其他嫌疑人的排除理由, 證據原紀錄連結]
+text_fidelity:
+  reliable_template: "可靠記錄：{character} 在時間點 {tick} 位於 {location}。"
+  testimony_template: "{speaker} 聲稱：「我在時間點 {tick} 位於 {location}。」此說法尚待核對。"
+  refuted_template: "此說法已被 {evidence_source} 反駁；這本身不等於已證明發話者殺人。"
+  allowed_fact_sources: [fixed_givens, ground_truth, evidence, coverup_case]
+  forbidden_additions: [新增人物關係, 新增目擊者, 新增動機, 新增時刻或場所, 隱含移動捷徑, 把證詞改稱事實]
+reproducibility:
+  case_id: manor-gallery
+  generation_seed: 1701
+  content_revision: draft-reference-a
+  same_input_requires_same_world_and_evidence: true
+verification_outcomes:
+  - {verifier_status: 已完成且唯一, expected_publishable: true, expected_display: 可解性已驗證}
+  - {verifier_status: 未執行, expected_publishable: false, expected_display: 未驗證}
+  - {verifier_status: 未完成或資源耗盡, expected_publishable: false, expected_display: 未驗證}
+  - {verifier_status: 已完成但資訊不足, expected_publishable: false, expected_display: 資訊不足}
+  - {verifier_status: 已完成但矛盾, expected_publishable: false, expected_display: 證據矛盾}
+coverup_case:
+  id: manor-coverup
+  basis: reference_case
+  changes_only: [共謀責任, 共謀事件, 掩護證詞, 掩護揭曉]
+  ground_truth:
+    murderer: yun
+    accomplices: [he]
+    conspirator_count: 2
+    plan_event: {tick: 0, location: foyer, participants: [yun, he], purpose: 為雲提供圖書室不在場說法}
+  additional_statement:
+    id: say-he-coverup
+    speaker: he
+    claim: {character: yun, tick: 5, location: library}
+    actually_true: false
+    claimed_knowledge: 聲稱親眼看見雲在圖書室
+    actual_knowledge: 在門廳與雲預先約定的虛假說法
+  additional_evidence:
+    id: e-he-says
+    kind: testimony
+    statement_id: say-he-coverup
+    source: 禾本人
+    acquisition: {location: kitchen, action: 訪談禾, requires: [e-case]}
+  complete_evidence_ids: [e-case, e-lan, e-he, e-mei, e-wu, e-yun-says, e-he-says, e-library-seal]
+  expected_candidates: [yun]
+  expected_status: 唯一兇手
+  expected_refuted_testimonies: [e-yun-says, e-he-says]
+  independently_proven_accomplice_before_reveal_required: false
+  accomplice_disclosure: 揭曉呈現世界中的共同計畫；證詞遭反駁本身不證明事前合意
+regression_cases:
+  - reference_case
+  - evidence_sets.complete
+  - evidence_sets.insufficient
+  - evidence_sets.contradictory
+  - evidence_sets.with_redundancy
+  - coverup_case
+generation_batch:
+  milestone: M2
+  seeds: [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012]
+  required_valid_cases: 12
+  max_world_attempts_per_seed: 100
+  allowed_characters: reference_case.characters
+  allowed_locations_and_paths: reference_case.locations and reference_case.paths
+  allowed_crime_ticks: [4, 5, 6]
+  victim: qiao
+  suspects: [lan, he, mei, wu, yun]
+  minimal_distinct_murderers: 3
+  minimal_distinct_crime_locations: 2
+  minimal_distinct_case_signatures: 8
+  case_signature: 犯罪場所、犯罪時刻、兇手識別及完整可靠證據的角色/時間/場所命題集合；不含顯示姓名、標題或證據排列。
+  allowed_reliable_fact_kinds: [角色在某時間點位於某場所, 某場所在指定時間點無人]
+  allowed_testimony_kinds: [角色聲稱某角色在某時間點位於某場所]
+  bystander_rule: 犯罪時刻另有嫌疑人與被害者同處犯罪場所的世界，以上述事實種類無法排除該人，視為一次失敗的嘗試並重抽，不得補造事實。
+  every_case_requires: [合法真實世界, 可取得的完整線索, 從可靠證據獨立確認唯一兇手, 同輸入重現同案件]
+  inconclusive_or_exhausted: 顯示生成或驗證失敗，保留嘗試紀錄，不計入有效案件。
+  public_examples_are_not_holdouts: true

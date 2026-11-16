@@ -1,0 +1,275 @@
+status: draft
+purpose: 業務情境、可知歷史與期望；不是實作介面或儲存格式
+expectations_status: 待參考實作驗證；未宣稱叢集或檢查器已驗收
+cluster:
+  members: [A, B, C, D, E]
+  node_count: 5
+  majority_count: 3
+  membership_changes_allowed: false
+  initial_values: {}
+  absent_result: 不存在
+  clients: [reader, writer]
+  clock: 單調遞增的虛擬時間點
+  default_delivery_delay_ticks: 1
+  byzantine_behavior: false
+  stable_storage_survives_crash_restart: true
+  disk_loss_or_corruption_allowed: false
+  request_identity_scope: 同一實驗及其重播、分支，沒有自動失效期限
+  request_identity_components: [客戶端身分, 請求識別]
+  successful_write_result: 已確認
+  rejected_identity_result: 請求識別衝突
+  unavailable_result: 不可用
+  unavailable_semantics: 只表示這次嘗試沒有取得結果，不是該邏輯操作的失敗結論。歷史分析把它當作未完成操作（可能已生效，也可能沒有）；同一請求可以重送並延續原操作；不可用不得被記成原結果，也不得讓之後的重送永遠得到不可用。
+  client_names_are_identities_only: 客戶端名稱只是身分；reader 也可以寫入，writer 也可以讀取。
+baseline_case:
+  alive_members: [A, B, C, D, E]
+  initial_values: {}
+  delivery_bound_ticks: 2
+  completion_bound_per_operation_ticks: 40
+  fair_processing: true
+  operations_are_sequential: true
+  steps:
+    - {request: base-absent, client: reader, action: read, key: x, expected: 不存在}
+    - {request: base-red, client: writer, action: write, key: x, value: 紅, expected: 已確認}
+    - {request: base-read-red, client: reader, action: read, key: x, expected: 紅}
+    - {request: base-other-key, client: reader, action: read, key: y, expected: 不存在}
+fault_controls:
+  delay: 指定待送訊息的較晚傳遞時間，不更改內容
+  drop: 移除指定傳遞；操作仍可能已生效，不自動回滾
+  duplicate: 複製指定訊息的傳遞，保留相同內容與原訊息關係
+  reorder: 選擇待送訊息的交付先後，虛擬時間不可倒退
+  partition: 指定方向的跨群組待送與新送訊息均丟棄
+  heal: 只恢復後續傳遞，不復活已丟棄訊息
+  crash: 節點停止工作；傳向已崩潰節點的訊息丟棄
+  restart: 同一成員重新工作，保留穩定儲存
+  pause: 停止虛擬時間與事件推進，可回看日誌
+  advance: 依記錄的選擇推進至下一事件或指定時間
+small_histories:
+  legal_sequential:
+    initial_values: {}
+    operations:
+      - {request: w-red, client: writer, action: write, key: x, value: 紅, invoke: 1, complete: 2, result: 已確認}
+      - {request: r-red, client: reader, action: read, key: x, invoke: 3, complete: 4, result: 紅}
+    expected: 合法
+    legal_order_witness: [w-red, r-red]
+  legal_overlap:
+    initial_values: {}
+    operations:
+      - {request: w-red, client: writer, action: write, key: x, value: 紅, invoke: 1, complete: 5, result: 已確認}
+      - {request: r-absent, client: reader, action: read, key: x, invoke: 2, complete: 3, result: 不存在}
+    expected: 合法
+    legal_order_witness: [r-absent, w-red]
+  legal_pending_write:
+    initial_values: {}
+    operations:
+      - {request: w-red, client: writer, action: write, key: x, value: 紅, invoke: 1, complete: null, result: 未確認}
+      - {request: r-red, client: reader, action: read, key: x, invoke: 3, complete: 4, result: 紅}
+    expected: 合法
+    legal_completion_witness: 將未完成的 w-red 納入並置於 r-red 之前
+    legal_order_witness: [w-red, r-red]
+  illegal_stale_read:
+    initial_values: {}
+    operations:
+      - {request: w-red, client: writer, action: write, key: x, value: 紅, invoke: 1, complete: 2, result: 已確認}
+      - {request: r-absent, client: reader, action: read, key: x, invoke: 3, complete: 4, result: 不存在}
+    expected: 非法
+    reason: w-red 完成早於 r-absent 開始，且無後續覆蓋，讀值不可為不存在
+  illegal_reverted_value:
+    initial_values: {}
+    operations:
+      - {request: w-red, client: writer, action: write, key: x, value: 紅, invoke: 1, complete: 2, result: 已確認}
+      - {request: w-blue, client: writer, action: write, key: x, value: 藍, invoke: 3, complete: 4, result: 已確認}
+      - {request: r-old, client: reader, action: read, key: x, invoke: 5, complete: 6, result: 紅}
+    expected: 非法
+    reason: 已確認的 w-blue 必須先於 r-old，沒有較新寫入可解釋讀回紅
+partition_case:
+  start_tick: 10
+  end_observation_tick: 30
+  groups: [[A, B], [C, D, E]]
+  cross_group_directions_blocked: both
+  minority_client_reachable: [A]
+  majority_client_reachable: [C, D, E]
+  within_majority_delivery_bound_ticks: 2
+  processing_fairness: 每個存活且可達的節點在每個時間點都有處理機會
+  pre_partition: 第 0 至 9 時間點為全體連通的穩定叢集，沒有其他故障。
+  new_operations:
+    - {request: minority-new, client: writer, action: write, key: minority-key, value: 紅, invoke: 12, via: A, expected: 未確認或不可用}
+    - {request: majority-new, client: reader, action: write, key: majority-key, value: 藍, invoke: 12, via: C, complete_by: 30, expected: 已確認}
+  minority_stale_read_probe:
+    purpose: 少數側不得以本地舊資料回覆新的讀取；majority-new 已在此讀取開始前完成，合法結果只有藍或沒有結果。
+    operation: {request: minority-stale-read, client: reader, action: read, key: majority-key, invoke_after: majority-new 已確認, via: A, expected: 未確認或不可用, forbidden_result: 不存在}
+    partition_remains_through: 40
+    observe_through_tick: 40
+  minority_may_return_prior_confirmed_result: true
+  minority_may_confirm_new_write: false
+durability_case:
+  steps:
+    - {stage: before_crash, request: durable-red, client: writer, action: write, key: x, value: 紅, require_result: 已確認}
+    - {stage: all_down, action: crash, nodes: [A, B, C, D, E], stable_storage: 保留}
+    - {stage: restart, action: restart, nodes: [A, B, C, D, E]}
+    - {stage: stable_again, action: establish_stable_window, duration_ticks: 40, delivery_bound_ticks: 2, fair_processing: true}
+    - {stage: first_read, request: durable-read, client: reader, action: read, key: x, expected: 紅}
+    - {stage: overwrite, request: durable-blue, client: writer, action: write, key: x, value: 藍, require_result: 已確認}
+    - {stage: second_read, request: durable-read-new, client: reader, action: read, key: x, expected: 藍}
+  sequence_rule: 每個有結果的階段完成才進入下階段；穩定窗口內的各操作各自使用同長度完成上限
+  downtime_service_required: false
+retry_cases:
+  completed_write:
+    steps:
+      - {request: retry-w-red, client: writer, action: write, key: x, value: 紅, expected: 已確認}
+      - {request: retry-w-blue, client: writer, action: write, key: x, value: 藍, expected: 已確認}
+      - {request: retry-w-red, client: writer, action: write, key: x, value: 紅, expected: 原操作的已確認結果, is_retry: true}
+      - {request: retry-r-new, client: reader, action: read, key: x, expected: 藍}
+    operations_are_sequential: true
+    expected_distinct_logical_operations: 3
+  completed_read:
+    steps:
+      - {request: rr-w-red, client: writer, action: write, key: x, value: 紅, expected: 已確認}
+      - {request: rr-old-read, client: reader, action: read, key: x, expected: 紅}
+      - {request: rr-w-blue, client: writer, action: write, key: x, value: 藍, expected: 已確認}
+      - {request: rr-old-read, client: reader, action: read, key: x, expected: 紅, is_retry: true}
+      - {request: rr-new-read, client: reader, action: read, key: x, expected: 藍}
+    operations_are_sequential: true
+  conflicting_intent:
+    original: {request: same-id, client: writer, action: write, key: x, value: 紅, expected: 已確認}
+    conflicting_attempts:
+      - {request: same-id, client: writer, action: write, key: x, value: 藍}
+      - {request: same-id, client: writer, action: write, key: y, value: 紅}
+      - {request: same-id, client: writer, action: read, key: x}
+    expected_each: 請求識別衝突
+    expected_values_after: {x: 紅}
+  pending_retry:
+    original: {request: lost-reply, client: writer, action: write, key: x, value: 紅}
+    fault: 對客戶端丟棄原操作的成功回覆
+    retry: {request: lost-reply, client: writer, action: write, key: x, value: 紅}
+    expected_final_result: 已確認
+    expected_distinct_logical_operations: 1
+    expected_values_after: {x: 紅}
+fault_trace:
+  delivery_mode: 手動。待送訊息在使用者選擇傳遞、延遲或丟棄之前保持待送；default_delivery_delay_ticks 只適用自動推進。
+  message_binding: m-one 等是本案例給待送訊息的別名，綁定到方向相符的實際待送訊息。該時刻若沒有足夠的待送訊息，可以改用節點收到後不處理的診斷訊息，日誌須標明是診斷訊息。
+  initial_pending_messages:
+    - {id: m-one, from: A, to: B, content_label: 保持不變的訊息甲}
+    - {id: m-two, from: A, to: B, content_label: 保持不變的訊息乙}
+    - {id: m-three, from: B, to: A, content_label: 保持不變的訊息丙}
+  events:
+    - {tick: 1, action: delay, target: m-one, deliver_at: 5}
+    - {tick: 1, action: duplicate, target: m-two, copies_added: 1, copy_id: m-two-copy}
+    - {tick: 2, action: deliver, target: m-two, expected: 先於 m-one 傳遞且內容不變}
+    - {tick: 3, action: drop, target: m-three, expected: 未傳遞且操作效果仍需另行判定}
+    - {tick: 4, action: deliver, target: m-two-copy, expected: 原訊息的重複傳遞，內容不變}
+    - {tick: 5, action: deliver, target: m-one, expected: 延後到達，形成重排}
+    - {tick: 6, action: partition, groups: [[A, B], [C, D, E]], expected: 跨界待送及新送訊息均丟棄}
+    - {tick: 7, action: crash, target: B, expected: 停止處理且穩定資料保留}
+    - {tick: 8, action: restart, target: B, expected: 同一成員恢復且穩定資料保留}
+    - {tick: 9, action: heal, expected: 恢復後續傳遞，不重送已丟棄訊息}
+  required_log_context: [虛擬時間, 外部操作, 對象, 原訊息關係, 傳遞或丟棄結果, 客戶端請求關係, 節點自述狀態]
+replay_case:
+  basis: partition_case
+  seed: 5105
+  recorded_choices: [使用者操作, 故障事件, 訊息傳遞先後, 同時刻事件先後, 節點處理先後]
+  checkpoints: [12, 20, 30]
+  required_equal_observations: [客戶端邏輯操作與結果, 外部故障日誌, 節點可見狀態]
+counterfactual_case:
+  basis: partition_case
+  branch_tick: 14
+  pending_request: minority-new
+  original:
+    partition_remains_through: 55
+    expected_pending_request: 未確認或不可用
+  branch:
+    changed_event: {tick: 15, action: heal, directions: all}
+    delivery_bound_ticks: 2
+    fair_processing: true
+    client_reachable_after_heal: [A, B, C, D, E]
+    original_unconfirmed_operation_remains_tracked: true
+    retry_same_request_if_unavailable: true
+    complete_by_tick: 55
+    expected_pending_request: 已確認
+  prefix_and_original_are_immutable: true
+teaching_fixture:
+  basis: partition_case
+  precondition: 分割開始前 A 自述 leader。可用任何有記錄的事件選擇達成（例如節點處理先後），達成方式須列入重播資料；沒有 leader 概念的實作改用等價的自述角色並說明。
+  displayed_states:
+    - {node: A, self_reported_role: leader, leadership_generation: 7, connected_group: [A, B], new_write_result: 未確認}
+    - {node: C, self_reported_role: leader, leadership_generation: 8, connected_group: [C, D, E], new_write_result: 已確認}
+  exact_generation_numbers_are_teaching_example_only: true
+  must_label_role_as_self_reported: true
+  global_single_leader_at_every_instant_required: false
+  explanation_topics: [少數無法確認新寫入, 不同世代自述角色可並存, 已確認歷史的安全性, 活性需要的穩定條件]
+liveness_case:
+  fault_prefix:
+    start_tick: 0
+    through_tick: 19
+    network: 任意允許的延遲與分割
+    pending_write: {request: eventually-red, client: writer, action: write, key: x, value: 紅, invoke: 10}
+  stable_window:
+    starts_at_tick: 20
+    ends_at_tick: 80
+    alive_members: [A, B, C]
+    other_members: [D, E]
+    other_members_state: 崩潰
+    delivery_bound_ticks: 2
+    drops: false
+    new_partitions: false
+    processing_fairness: 每個存活節點及客戶端在每個時間點都有處理機會
+    client_reachable_members: [A, B, C]
+    pending_write_complete_by_tick: 60
+    fresh_read: {request: eventually-read, client: reader, action: read, key: x, invoke: 61, complete_by: 80, expected: 紅}
+  retry_original_if_unavailable: true
+  no_other_writes: true
+no_liveness_case:
+  alive_members: [A, B]
+  crashed_members: [C, D, E]
+  client_reachable_members: [A]
+  observation_end_tick: 40
+  new_write: {request: no-quorum, client: writer, action: write, key: x, value: 紅}
+  allowed_results: [未確認, 不可用]
+  forbidden_result: 已確認
+  missing_precondition: 存活且可互相送達的多數
+analysis_outcomes:
+  - {analysis_status: 已完成且有合法序列, expected: 合法}
+  - {analysis_status: 已完成且無合法序列, expected: 非法}
+  - {analysis_status: 時間預算用盡, expected: 未判定}
+  - {analysis_status: 資源預算用盡, expected: 未判定}
+  - {analysis_status: 尚未執行, expected: 未驗證}
+snapshot_case:
+  stable_delivery_bound_ticks: 2
+  completion_bound_per_stage_ticks: 40
+  fair_processing: true
+  sequence_rule: 前一個要求完成的階段成功後才開始下一階段，所有階段使用固定完成上限
+  stages:
+    - {id: isolate, action: partition, isolated_member: E, others: [A, B, C, D]}
+    - {id: write_red, request: snap-red, client: writer, action: write, key: x, value: 紅, require_result: 已確認}
+    - {id: write_blue, request: snap-blue, client: writer, action: write, key: x, value: 藍, require_result: 已確認}
+    - {id: snapshot, action: take_snapshot, members: [A, B, C, D], covers_confirmed_requests: [snap-red, snap-blue], expected_values: {x: 藍}}
+    - {id: compress, action: compact_covered_log, members: [A, B, C, D], covered_requests: [snap-red, snap-blue]}
+    - {id: crash, action: crash, target: B, stable_storage: 保留}
+    - {id: restart, action: restart, target: B}
+    - {id: rejoin, action: heal, target: E, all_members_stable: true}
+    - {id: recovery_read, request: snap-read, client: reader, action: read, key: x, via: E, expected: 藍}
+  lagging_member: E
+  expected_lagging_state_after_recovery: 已追上已確認狀態，x 為藍
+  retry_after_recovery:
+    original_request: {request: snap-red, client: writer, action: write, key: x, value: 紅}
+    expected_retry_result: 原操作的已確認結果
+    new_read: {request: snap-read-after-retry, client: reader, action: read, key: x, expected: 藍}
+snapshot_equivalence:
+  basis: snapshot_case
+  variants:
+    - {id: with_compaction, execute_stages: all}
+    - {id: without_compaction, omit_stages: [snapshot, compress]}
+  compare: [邏輯請求身分, 已完成操作結果, 新讀取值, 最終已確認鍵值]
+  may_differ: [快照及壓縮事件, 詳細日誌長度, 節點恢復的事件步驟]
+regression_cases:
+  - baseline_case
+  - small_histories
+  - partition_case
+  - durability_case
+  - retry_cases
+  - fault_trace
+  - replay_case
+  - counterfactual_case
+  - liveness_case
+  - no_liveness_case
+  - snapshot_case

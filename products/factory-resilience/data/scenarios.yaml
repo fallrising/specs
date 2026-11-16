@@ -1,0 +1,827 @@
+schema: factory-resilience-scenarios/v1
+status: draft
+fixture_version: 2026-11-16-draft1
+purpose: 業務 fixture 與可行 witness；待參考實作確認，不代表產品驗收。
+units:
+  time: tick; planned operation starts/ends are integer ticks; external cancellation requests may use half ticks;
+    all fault endpoints in these fixtures are integers
+  quantity: whole items
+  mass: abstract mass unit; no claim of real process accuracy
+limits:
+  machine_kinds: 6
+  material_kinds: 8
+  orders_max: 20
+  resource_instances_max: 6
+  scenario_horizon_max: 480
+  finite_orders_only: true
+  order_quantity_max: 1
+  order_quantity_note: every fixture order is one unit through the route once; a scenario with another quantity is rejected at load until batching rules are specified
+  external_event_time_quantum: 0.5
+fault_semantics:
+  interval: half-open [start, end); the resource may start work again at end
+  reported_at: the fault and its repair end become known at the fault start tick; a plan made earlier may not anticipate it
+  facts_kept_on_replan: operations finished or already running at reported_at, and transports already started
+event_order:
+- finish_due_operations
+- apply_faults_and_cancellations
+- start_new_operations
+machine_kinds:
+- cutter
+- press
+- heater
+- assembler
+- inspector
+- carrier
+materials:
+  raw_plate:
+    label: 原板
+    unit_mass: 4
+  cut_plate:
+    label: 裁切板
+    unit_mass: 4
+  formed_plate:
+    label: 成形板
+    unit_mass: 4
+  treated_plate:
+    label: 熱處理板
+    unit_mass: 4
+  raw_resin:
+    label: 樹脂料
+    unit_mass: 2
+  shell:
+    label: 外殼
+    unit_mass: 2
+  fastener:
+    label: 緊固件
+    unit_mass: 1
+  assembled_unit:
+    label: 組裝成品
+    unit_mass: 7
+location_rule: Fixture initial stock is explicitly at cutting or assembly. No additional transport to first station
+  is required. Full-route shells and fasteners are already at assembly. No unlisted replenishment.
+metric_definitions:
+  completion: end of delivery; pending is null
+  tardiness: max(0, completion - due); incomplete order remains pending
+  total_tardiness: sum completed order tardiness; only comparable as final when all orders terminal
+  makespan: latest delivery end minus earliest release; incomplete plan is labelled incomplete
+  wip: orders from first processing start inclusive to delivery or cancellation completion exclusive
+  average_wip: integral of wip over [earliest release, final terminal event) divided by window length
+  idle_ratio: (window length - busy time - unavailable time)/(window length - unavailable time); null when denominator
+    is zero
+  mass_balance: available + processing input mass + in-transit mass + waste + delivered = initial mass + explicit
+    replenishment
+mini:
+  resources:
+  - &id001
+    id: cutter1
+    kind: cutter
+    capacity: 1
+  - &id002
+    id: assembler1
+    kind: assembler
+    capacity: 1
+  - &id003
+    id: carrier1
+    kind: carrier
+    capacity: 1
+  route:
+  - id: cut
+    resource: cutter1
+    duration: 2
+    inputs:
+      raw_plate: 1
+    outputs:
+      cut_plate: 1
+    location: cutting
+  - id: move
+    resource: carrier1
+    duration: 1
+    material: cut_plate
+    quantity: 1
+    from: cutting
+    to: assembly
+  - id: assemble
+    resource: assembler1
+    duration: 2
+    inputs:
+      cut_plate: 1
+      shell: 1
+      fastener: 1
+    outputs:
+      assembled_unit: 1
+    location: assembly
+  - id: deliver
+    resource: carrier1
+    duration: 1
+    material: assembled_unit
+    quantity: 1
+    from: assembly
+    to: delivered
+  orders:
+  - id: A
+    release: 0
+    due: 6
+    quantity: 1
+  - id: B
+    release: 0
+    due: 7
+    quantity: 1
+  initial_stock:
+  - location: cutting
+    material: raw_plate
+    quantity: 2
+  - location: assembly
+    material: shell
+    quantity: 2
+  - location: assembly
+    material: fastener
+    quantity: 2
+  initial_mass: 14
+  feasible_witness:
+  - order: A
+    operation: cut
+    start: 0
+    end: 2
+  - order: B
+    operation: cut
+    start: 2
+    end: 4
+  - order: A
+    operation: move
+    start: 2
+    end: 3
+  - order: B
+    operation: move
+    start: 4
+    end: 5
+  - order: A
+    operation: assemble
+    start: 3
+    end: 5
+  - order: B
+    operation: assemble
+    start: 5
+    end: 7
+  - order: A
+    operation: deliver
+    start: 5
+    end: 6
+  - order: B
+    operation: deliver
+    start: 7
+    end: 8
+  witness_classification: feasible; optimality not established
+  makespan_lower_bound:
+    value: 6
+    reason: one order critical path; valid lower bound only
+  expected:
+    delivered:
+      assembled_unit: 2
+    remaining_stock: {}
+    waste_mass: 0
+    completion:
+      A: 6
+      B: 8
+    metrics:
+      window:
+      - 0
+      - 8
+      makespan: 8
+      tardiness:
+        A: 0
+        B: 1
+      total_tardiness: 1
+      wip_integral: 12
+      average_wip: 1.5
+      busy_time:
+        cutter1: 4
+        assembler1: 4
+        carrier1: 4
+      idle_ratio:
+        cutter1: 0.5
+        assembler1: 0.5
+        carrier1: 0.5
+  ledger_checkpoints:
+  - time: 0
+    phase: after starts
+    available:
+      raw_plate: 1
+      shell: 2
+      fastener: 2
+    processing_inputs:
+      raw_plate: 1
+    in_transit: {}
+    delivered: {}
+    mass_total: 14
+  - time: 3
+    phase: after starts
+    available:
+      shell: 1
+      fastener: 1
+    processing_inputs:
+      raw_plate: 1
+      cut_plate: 1
+      shell: 1
+      fastener: 1
+    in_transit: {}
+    delivered: {}
+    mass_total: 14
+  - time: 5
+    phase: after starts
+    available: {}
+    processing_inputs:
+      cut_plate: 1
+      shell: 1
+      fastener: 1
+    in_transit:
+      assembled_unit: 1
+    delivered: {}
+    mass_total: 14
+  - time: 8
+    phase: after completions
+    available: {}
+    processing_inputs: {}
+    in_transit: {}
+    delivered:
+      assembled_unit: 2
+    mass_total: 14
+  invalid_plans:
+  - case: overlap
+    change:
+      order: B
+      operation: cut
+      start: 1
+      end: 3
+    expected_conflict:
+      resource: cutter1
+      orders:
+      - A
+      - B
+      interval:
+      - 1
+      - 2
+  - case: assembly_before_arrival
+    change:
+      order: A
+      operation: assemble
+      start: 2
+      end: 4
+    expected_conflict:
+      order: A
+      required_predecessor: move
+      arrival: 3
+bounded_demo:
+  resources:
+  - *id001
+  - id: press1
+    kind: press
+    capacity: 1
+  - id: heater1
+    kind: heater
+    capacity: 1
+  - *id002
+  - id: inspector1
+    kind: inspector
+    capacity: 1
+  - *id003
+  route:
+  - id: cut
+    resource: cutter1
+    duration: 2
+    inputs:
+      raw_plate: 1
+    outputs:
+      cut_plate: 1
+    location: cutting
+  - id: move_to_press
+    resource: carrier1
+    duration: 1
+    material: cut_plate
+    quantity: 1
+    from: cutting
+    to: press
+  - id: form
+    resource: press1
+    duration: 1
+    inputs:
+      cut_plate: 1
+    outputs:
+      formed_plate: 1
+    location: press
+  - id: move_to_heat
+    resource: carrier1
+    duration: 1
+    material: formed_plate
+    quantity: 1
+    from: press
+    to: heat
+  - id: heat
+    resource: heater1
+    duration: 2
+    inputs:
+      formed_plate: 1
+    outputs:
+      treated_plate: 1
+    location: heat
+  - id: move_to_assembly
+    resource: carrier1
+    duration: 1
+    material: treated_plate
+    quantity: 1
+    from: heat
+    to: assembly
+  - id: assemble
+    resource: assembler1
+    duration: 2
+    inputs:
+      treated_plate: 1
+      shell: 1
+      fastener: 1
+    outputs:
+      assembled_unit: 1
+    location: assembly
+  - id: move_to_inspection
+    resource: carrier1
+    duration: 1
+    material: assembled_unit
+    quantity: 1
+    from: assembly
+    to: inspection
+  - id: inspect
+    resource: inspector1
+    duration: 1
+    material: assembled_unit
+    quantity: 1
+    location: inspection
+    effect: marks inspected; does not consume or create material
+  - id: deliver
+    resource: carrier1
+    duration: 1
+    material: assembled_unit
+    quantity: 1
+    from: inspection
+    to: delivered
+  orders:
+  - id: O01
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O02
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O03
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O04
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O05
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O06
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O07
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O08
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O09
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O10
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O11
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O12
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O13
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O14
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O15
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O16
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O17
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O18
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O19
+    release: 0
+    due: 260
+    quantity: 1
+  - id: O20
+    release: 0
+    due: 260
+    quantity: 1
+  initial_stock:
+  - location: cutting
+    material: raw_plate
+    quantity: 20
+  - location: assembly
+    material: shell
+    quantity: 20
+  - location: assembly
+    material: fastener
+    quantity: 20
+  catalog_note: raw_resin is a declared stock kind but is not consumed by these recipes; shells are supplied. The
+    material catalogue is not a promise of a recipe for every item.
+  initial_mass: 140
+  sequential_witness:
+    order_sequence:
+    - O01
+    - O02
+    - O03
+    - O04
+    - O05
+    - O06
+    - O07
+    - O08
+    - O09
+    - O10
+    - O11
+    - O12
+    - O13
+    - O14
+    - O15
+    - O16
+    - O17
+    - O18
+    - O19
+    - O20
+    order_start: 13 * (one_based_order_index - 1)
+    rule: Within each order, listed route operations are contiguous; all preceding order operations finish first.
+    route_duration: 13
+    completion: 13 * one_based_order_index
+    makespan: 260
+    delivered_units: 20
+    classification: feasible; optimality not established
+    lower_bound: 100
+    lower_bound_reason: carrier total workload; lower bound only
+invalid_scenarios:
+- base: bounded_demo
+  change: append a new unique order O21
+  expected: orders_max exceeded
+- base: mini
+  change: replace A cut input raw_plate with unknown_material
+  expected: unknown material
+before_start_fault:
+  base: mini
+  fault:
+    resource: assembler1
+    interval:
+    - 3
+    - 5
+    reported_at: 3
+  replanned_witness:
+  - order: A
+    operation: cut
+    start: 0
+    end: 2
+  - order: B
+    operation: cut
+    start: 2
+    end: 4
+  - order: A
+    operation: move
+    start: 2
+    end: 3
+  - order: B
+    operation: move
+    start: 4
+    end: 5
+  - order: A
+    operation: assemble
+    start: 5
+    end: 7
+  - order: B
+    operation: assemble
+    start: 7
+    end: 9
+  - order: A
+    operation: deliver
+    start: 7
+    end: 8
+  - order: B
+    operation: deliver
+    start: 9
+    end: 10
+  expected:
+    completion:
+      A: 8
+      B: 10
+    makespan: 10
+    total_tardiness: 5
+    wip_integral: 16
+    average_wip: 1.6
+    window:
+    - 0
+    - 10
+  lower_bound: 6
+  classification: feasible; optimality not established
+  generated_plan_acceptance:
+    must_preserve: all completed and running operations at fault time; no start on unavailable resource
+    all_orders_delivered: true
+    makespan_max: 10
+    total_tardiness_max: 5
+    classification: feasible; optimality not established; order-specific completion times may differ from witness
+interruption_policy:
+  scope: M3 mini assembly only; other processing and carrier failure not introduced
+  assembly_recovery:
+    cut_plate: 1
+    shell: 0
+    fastener: 1
+  assembly_waste:
+    shell: 1
+  output_on_interruption: {}
+  fault_retry: Restart from beginning after repair and new valid input allocation; progress is not retained.
+  cancel_before_start: release plan allocation; stock unchanged
+  cancel_during_transport: finish current transport, leave cargo at destination, then cancel remaining operations
+  cancel_delivered: reject; delivered inventory unchanged
+  duplicate_identity: same report ID and same content applies once; same ID with different content is rejected
+  unsupported: a fault that starts while its resource is running an operation other than mini assembly (a carrier in transport included), and a cancellation requested while the order is in a cut operation, are rejected as unsupported-interruption; no state changes and the reporter may retry later. Before M3 a fault that starts during assembly is rejected the same way. A fault that starts while its resource is idle is an ordinary before-start fault on any resource.
+unsupported_interruptions:
+- id: cutter_fault_during_cut
+  base: mini
+  report: {kind: fault, resource: cutter1, interval: [1, 3]}
+  expected: {rejected: true, reason: unsupported-interruption, state_changed: false}
+- id: cancel_during_cut
+  base: mini
+  report: {kind: cancellation, order: A, cancel_time: 1}
+  expected: {rejected: true, reason: unsupported-interruption, order_state: in_progress, state_changed: false}
+during_processing_fault:
+  base: mini
+  initial_stock_override:
+  - location: cutting
+    material: raw_plate
+    quantity: 2
+  - location: assembly
+    material: shell
+    quantity: 3
+  - location: assembly
+    material: fastener
+    quantity: 2
+  initial_mass: 16
+  fault:
+    report_id: fault-A-4
+    resource: assembler1
+    interval:
+    - 4
+    - 6
+    reported_at: 4
+    interrupted_order: A
+  expected_after_fault:
+    time: 4
+    phase: after new starts
+    available:
+      cut_plate: 1
+      shell: 2
+      fastener: 2
+    in_transit:
+      cut_plate: 1
+    processing_inputs: {}
+    waste:
+      shell: 1
+    delivered: {}
+    mass_total: 16
+  replanned_witness:
+  - order: A
+    operation: cut
+    start: 0
+    end: 2
+  - order: B
+    operation: cut
+    start: 2
+    end: 4
+  - order: A
+    operation: move
+    start: 2
+    end: 3
+  - order: B
+    operation: move
+    start: 4
+    end: 5
+  - order: A
+    operation: assemble_interrupted
+    start: 3
+    end: 4
+  - order: A
+    operation: assemble_retry
+    start: 6
+    end: 8
+  - order: B
+    operation: assemble
+    start: 8
+    end: 10
+  - order: A
+    operation: deliver
+    start: 8
+    end: 9
+  - order: B
+    operation: deliver
+    start: 10
+    end: 11
+  operation_aliases:
+    assemble_interrupted: assemble; interrupted before output
+    assemble_retry: assemble; new attempt after full recovery
+  expected_final:
+    completion:
+      A: 9
+      B: 11
+    makespan: 11
+    total_tardiness: 7
+    delivered:
+      assembled_unit: 2
+    available: {}
+    waste:
+      shell: 1
+    mass_total: 16
+  generated_plan_acceptance:
+    all_orders_delivered: true
+    makespan_max: 11
+    total_tardiness_max: 7
+    mass_total: 16
+    waste:
+      shell: 1
+    classification: feasible; optimality not established; generated schedule need not equal witness
+cancellation_cases:
+- id: before_start
+  base: mini
+  orders_only:
+  - A
+  initial_stock:
+    raw_plate: 1
+    shell: 1
+    fastener: 1
+  cancel_time: 0
+  phase: before starts
+  expected:
+    order_state: cancelled
+    available:
+      raw_plate: 1
+      shell: 1
+      fastener: 1
+    waste: {}
+    output: {}
+- id: during_assembly
+  base: mini
+  orders_only:
+  - A
+  initial_stock:
+    raw_plate: 1
+    shell: 1
+    fastener: 1
+  cancel_time: 4
+  expected:
+    order_state: cancelled
+    available:
+      cut_plate: 1
+      fastener: 1
+    waste:
+      shell: 1
+    output: {}
+- id: during_transport
+  base: mini
+  orders_only:
+  - A
+  initial_stock:
+    raw_plate: 1
+    shell: 1
+    fastener: 1
+  cancel_time: 2.5
+  expected:
+    order_state_at_request: cancellation_pending
+    order_state_at:
+      time: 3
+      state: cancelled
+    available:
+      cut_plate: 1
+      shell: 1
+      fastener: 1
+    cut_plate_location: assembly
+    waste: {}
+    output: {}
+- id: after_delivery
+  base: mini
+  orders_only:
+  - A
+  initial_stock:
+    raw_plate: 1
+    shell: 1
+    fastener: 1
+  cancel_time: 6
+  phase: after completion
+  expected:
+    rejected: true
+    order_state: delivered
+    delivered:
+      assembled_unit: 1
+duplicate_reports:
+- id: start-A-3
+  kind: assembly_start
+  repetitions: 2
+  expected_effect_count: 1
+- id: fault-A-4
+  kind: fault_and_recovery
+  repetitions: 2
+  expected_effect_count: 1
+- id: finish-A-8
+  kind: retry_completion
+  repetitions: 2
+  expected_effect_count: 1
+- id: deliver-A-9
+  kind: delivery
+  repetitions: 2
+  expected_effect_count: 1
+- id: fault-A-4
+  kind: same identity with altered repair end
+  altered_repair_end: 7
+  expected: reject conflicting content; retain original recovery and repair end
+metric_edge_cases:
+- case: incomplete
+  base: mini
+  stop_at: 5
+  expected_pending_orders: 2
+  expected_makespan_status: incomplete
+- case: no_available_time
+  window:
+  - 0
+  - 8
+  resource: assembler1
+  unavailable:
+  - 0
+  - 8
+  expected_idle_ratio: null
+interaction_walkthrough:
+- load mini
+- inspect A and stock
+- introduce overlap from invalid_plans
+- read conflict and restore witness
+- run
+- pause and inspect material
+- advance one event
+- finish deliveries
+- read metrics
+- reset
+replay_cases:
+  bases:
+  - mini
+  - before_start_fault
+  - during_processing_fault
+  save_times:
+  - 3
+  - 4
+  - 5
+  playback_rates:
+  - 1
+  - 4
+  - 16
+  comparison: business state equality; interrupted fixture applies only after M3
+invalid_saved_states:
+- change: set raw_plate quantity to -1
+  expected: negative inventory
+- change: set fixture version to unknown-version
+  expected: unsupported fixture version
+presentation_review:
+  viewport:
+  - 1280
+  - 720
+  required_fields:
+  - order ID
+  - operation
+  - resource
+  - start/end
+  - material location
+  - due/completion
+  - fault reason
+  - metrics observation window
+cancellation_case_note: Each case is independent, inherits mini station locations and only the listed A order. Flat
+  initial_stock counts replace mini counts at the same locations; unlisted materials start at zero.

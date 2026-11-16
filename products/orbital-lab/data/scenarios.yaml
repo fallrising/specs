@@ -1,0 +1,593 @@
+schema: orbital-lab-scenarios/v1
+status: draft
+fixture_version: 2026-11-16-draft1
+purpose: 解析與交叉計算之業務參考；待參考實作確認，不代表產品已驗收。
+units:
+  distance: L0
+  time: T0
+  velocity: L0/T0
+  gravity_parameter: L0^3/T0^2
+  gravity_mass: Mg
+  probe_and_fuel_mass: Mp
+  Mp_over_Mg: 1.0e-12
+  normalized_gravitational_constant: 1
+  specific_energy: L0^2/T0^2
+  specific_angular_momentum: L0^2/T0
+  angle: radian
+  display: dimensionless reference units; no SI labels or real-world scale implied
+model:
+  plane: xy; z and vz identically zero
+  sources: fixed point gravity sources; no mutual motion
+  probe: test particle; no gravitational reaction on sources
+  acceleration: sum(-mu_i*(r-c_i)/norm(r-c_i)^3)
+  energy: 0.5*norm(v)^2 - sum(mu_i/norm(r-c_i))
+  collision: stop at inclusive effective radius, before gravity singularity
+  propulsion: single instantaneous velocity change; no burn duration, attitude or thrust arc
+  fuel_used: (dry_mass + fuel_before)*(1-exp(-norm(delta_v)/exhaust_velocity))
+  remaining_delta_v: exhaust_velocity * ln((dry_mass + fuel)/dry_mass)
+limits:
+  gravity_sources_max: 2
+  probes: 1
+  successful_impulses_max: 1
+  simulation_time_max: 80
+  coordinate_abs_max: 20
+  initial_speed_max: 20
+  initial_fuel_max: 0.5
+probe:
+  dry_mass: 1
+  initial_fuel: 0.5
+  exhaust_velocity: 2
+  maximum_initial_delta_v: 0.8109302162163288
+event_policy:
+  regions: closed disks; tangent contact counts; speed limit inclusive
+  first_event: earliest eligible terminal event
+  simultaneous_priority:
+  - collision
+  - out_of_bounds
+  - success
+  - timeout
+  initial_inside: evaluate at t=0
+  finished_state: freeze physical state at terminal event; retain one result
+  duplicate: same command identity and same content applies once; conflicting content rejected
+  domain_boundary: touching abs(x) or abs(y) equal to coordinate_abs_max is terminal; valid interior is strictly
+    below that limit
+  simultaneous_tolerance: tolerances.high_speed_event.simultaneous_time_window
+circular_baseline:
+  sources:
+  - id: primary
+    position:
+    - 0
+    - 0
+    mu: 1
+    collision_radius: 0.1
+  initial:
+    time: 0
+    position:
+    - 1
+    - 0
+    velocity:
+    - 0
+    - 1
+  goal: null
+  period: 6.283185307179586
+  specific_energy: -0.5
+  specific_angular_momentum: 1
+  analytic_solution: r(t)=(cos(t),sin(t)); v(t)=(-sin(t),cos(t))
+  reference_samples:
+  - time: 0
+    position:
+    - 1
+    - 0
+    velocity:
+    - 0
+    - 1
+  - time: 1.5707963267948966
+    position:
+    - 0
+    - 1
+    velocity:
+    - -1
+    - 0
+  - time: 3.141592653589793
+    position:
+    - -1
+    - 0
+    velocity:
+    - 0
+    - -1
+  - time: 4.71238898038469
+    position:
+    - 0
+    - -1
+    velocity:
+    - 1
+    - 0
+  - time: 6.283185307179586
+    position:
+    - 1
+    - 0
+    velocity:
+    - 0
+    - 1
+single_impulse_calibration:
+  base: circular_baseline
+  impulse:
+    id: burn-1
+    time: 0
+    delta_v:
+    - 0
+    - 0.2
+  post_impulse:
+    time: 0
+    position:
+    - 1
+    - 0
+    velocity:
+    - 0
+    - 1.2
+    fuel_used: 0.14274387294606072
+    fuel_remaining: 0.3572561270539393
+    specific_energy: -0.28
+    specific_angular_momentum: 1.2
+  ellipse:
+    semimajor_axis: 1.7857142857142858
+    eccentricity: 0.44
+    apoapsis_radius: 2.5714285714285716
+    apoapsis_time: 7.496660305190688
+    apoapsis_position:
+    - -2.5714285714285716
+    - 0
+    apoapsis_velocity:
+    - 0
+    - -0.4666666666666667
+    reference_classification: analytic under declared two-body impulse model
+  goal: null
+  duplicate_test:
+    repeat_command_id: burn-1
+    expected_effect_count: 1
+single_impulse_mission:
+  base: single_impulse_calibration
+  goal:
+    center:
+    - -2.5714285714285716
+    - 0
+    radius: 0.03
+    speed_max: 0.6
+    requires_successful_impulse: true
+  deadline: 8
+  expected_success:
+    time: 7.432375474423298
+    position:
+    - -2.5711160779929663
+    - 0.029998372420061765
+    status: success
+    fuel_remaining: 0.3572561270539393
+    reference_method: 'analytic ellipse: x=a(cos(E)-e), y=a*sqrt(1-e^2)*sin(E), t=(E-e*sin(E))*a^(3/2); earliest
+      root at target boundary'
+invalid_impulses:
+- case: fuel_insufficient
+  delta_v:
+  - 0
+  - 1
+  expected: reject; exceeds available delta-v
+- case: zero_direction
+  direction:
+  - 0
+  - 0
+  magnitude: 0.2
+  expected: reject invalid direction
+- case: not_finite
+  delta_v:
+  - NaN
+  - 0.2
+  expected: reject non-finite input
+- case: second_distinct_impulse
+  after: burn-1
+  id: burn-2
+  delta_v:
+  - 0.1
+  - 0
+  expected: reject second impulse
+- case: changed_same_identity
+  after: burn-1
+  id: burn-1
+  delta_v:
+  - 0
+  - 0.3
+  expected: reject conflicting command content
+terminal_baselines:
+- id: no_burn_timeout
+  base: single_impulse_mission
+  impulse: null
+  expected:
+    status: timeout
+    time: 8
+- id: initial_collision
+  sources:
+  - id: primary
+    position:
+    - 0
+    - 0
+    mu: 1
+    collision_radius: 0.1
+  initial:
+    time: 0
+    position:
+    - 0.05
+    - 0
+    velocity:
+    - 0
+    - 0
+  expected:
+    status: collision
+    time: 0
+- id: out_of_bounds
+  sources: []
+  initial:
+    time: 0
+    position:
+    - 19
+    - 0
+    velocity:
+    - 1
+    - 0
+  expected:
+    status: out_of_bounds
+    time: 1
+    position:
+    - 20
+    - 0
+restricted_flyby:
+  sources:
+  - id: primary
+    position:
+    - -3
+    - 0
+    mu: 1
+    collision_radius: 0.1
+  - id: secondary
+    position:
+    - 0
+    - 0
+    mu: 0.05
+    collision_radius: 0.03
+  initial:
+    time: 0
+    position:
+    - -1
+    - 0.25
+    velocity:
+    - 1
+    - 0
+  goal: null
+  end_time: 2
+  reference_samples:
+  - time: 0.5
+    position:
+    - -0.5181682791355
+    - 0.24433633196521
+    velocity:
+    - 0.94158977980184
+    - -0.02550535666037
+  - time: 1.0
+    position:
+    - -0.03634903077279
+    - 0.20505488556328
+    velocity:
+    - 1.00981237787248
+    - -0.21073399158417
+  - time: 1.5
+    position:
+    - 0.39534063067828
+    - -0.01115633400575
+    velocity:
+    - 0.70137625389829
+    - -0.51055296957293
+  - time: 2.0
+    position:
+    - 0.71090075965566
+    - -0.26245609660023
+    velocity:
+    - 0.58039438166996
+    - -0.49337683502074
+  specific_energy: -0.044646063364100486
+  closest_approach:
+    source: secondary
+    time: 1.0966644084695563
+    distance: 0.18881818832268873
+  reference_classification: cross-checked numerical estimate; not an analytic proof or real mission model
+  reference_provenance:
+    checked_on: '2026-11-16'
+    procedure: two independent high-accuracy numerical estimates of the declared equations; temporary verification
+      only, no implementation choice imposed
+    sample_agreement_max: 1.0e-10
+    note: printed samples agree to the displayed precision; closest approach was separately minimized over the local
+      flyby interval
+tolerances:
+  norm: Euclidean for vector differences; maxima over stated sample set; separate position and velocity checks
+  circular:
+    position_absolute: 0.0005
+    velocity_absolute: 0.0005
+    initial_invariants_absolute: 1.0e-12
+  impulse:
+    instantaneous_position_absolute: 1.0e-12
+    instantaneous_velocity_absolute: 1.0e-10
+    fuel_absolute: 1.0e-10
+    energy_absolute: 1.0e-10
+    apoapsis_position_absolute: 0.0005
+    apoapsis_velocity_absolute: 0.0005
+  mission:
+    event_time_absolute: 0.002
+    event_position_absolute: 0.001
+  flyby:
+    position_absolute: 0.0001
+    velocity_absolute: 0.0001
+    closest_distance_absolute: 0.0001
+    closest_time_absolute: 0.0002
+  prediction:
+    position_absolute: 0.0001
+    velocity_absolute: 0.0001
+    fuel_absolute: 1.0e-10
+    event_time_absolute: 0.002
+  replay:
+    position_absolute: 1.0e-08
+    velocity_absolute: 1.0e-08
+    fuel_absolute: 1.0e-12
+    event_time_absolute: 1.0e-08
+  high_speed_event:
+    time_absolute: 1.0e-06
+    position_absolute: 1.0e-05
+    simultaneous_time_window: 1.0e-06
+  energy_relative: 0.0001
+  angular_momentum_relative: 0.0001
+  relative_error_denominator_floor: 1.0e-10
+convergence_audit:
+  scenarios:
+  - circular_baseline
+  - restricted_flyby
+  allowed_time_resolutions:
+  - 0.02
+  - 0.01
+  - 0.005
+  meaning: maximum time advance permitted during the numerical quality audit; finer internal evaluation allowed;
+    no integration method is specified
+  samples: scenario reference_samples
+  criterion: fine-to-finest error <= max(coarse-to-fine error, roundoff_floor), separately for position and velocity;
+    finest meets scenario oracle
+  fine_to_finest_max: 0.0001
+  roundoff_floor: 1.0e-10
+conservation_audit:
+  cases:
+  - base: circular_baseline
+    end_time: 62.83185307179586
+    sample_interval: 0.7853981633974483
+    also_include_endpoint: true
+    energy_reference: -0.5
+    angular_momentum_reference: 1
+  - base: restricted_flyby
+    end_time: 2
+    sample_interval: 0.05
+    also_include_endpoint: true
+    energy_reference: -0.044646063364100486
+    angular_momentum_check: false
+  relative_error: abs(value-reference)/max(abs(reference), denominator_floor)
+  required: maximum over every requested sample, not only final sample
+prediction_cases:
+- base: circular_baseline
+  samples: reference_samples
+- base: single_impulse_calibration
+  samples:
+  - 0
+  - 1
+  - 2
+  - 4
+  - 7.496660305190688
+- base: single_impulse_mission
+  samples: until terminal event
+  compare_terminal: true
+- base: restricted_flyby
+  samples: reference_samples
+replay_cases:
+  cases:
+  - base: single_impulse_mission
+    save_times:
+    - 0
+    - 1
+    - 7.432375474423298
+    burn_at_zero_must_be_retained: true
+  - base: restricted_flyby
+    save_times:
+    - 0.5
+    - 1
+  playback_rates:
+  - 1
+  - 10
+  - 100
+  comparison: same simulated time; compare states, fuel, applied impulse count and terminal event
+  m3_extension: repeat all high_speed_events after M3, including saving and reloading terminal states
+invalid_saved_states:
+- change: fuel = -0.1
+  expected: negative fuel
+- change: position x = NaN
+  expected: non-finite position
+- change: fixture_version = unknown-version
+  expected: unsupported fixture version
+high_speed_events:
+  common:
+    sources: []
+    initial:
+      time: 0
+      position:
+      - -2
+      - 0
+      velocity:
+      - 10
+      - 0
+    display_sample_interval: 0.5
+    goal_speed_max: 20
+    goal_requires_impulse: false
+    playback_rates:
+    - 1
+    - 10
+    - 100
+    reference: force-free r(t)=r(0)+v*t; all event times analytic
+    collision_disk_meaning: a collision_disk is a fixed source with mu 0; center maps to position and radius to collision_radius. It counts toward limits.gravity_sources_max and applies no force.
+  target_crossing:
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: success
+      time: 0.19
+      position:
+      - -0.1
+      - 0
+      uninterrupted_exit_time: 0.21
+      uninterrupted_next_sample_position:
+      - 3
+      - 0
+  collision_crossing:
+    collision_disk:
+      center:
+      - 0
+      - 0
+      radius: 0.2
+      mu: 0
+    goal: null
+    expected:
+      status: collision
+      time: 0.18
+      position:
+      - -0.2
+      - 0
+  collision_before_target:
+    collision_disk:
+      center:
+      - -0.5
+      - 0
+      radius: 0.1
+      mu: 0
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: collision
+      time: 0.14
+      position:
+      - -0.6
+      - 0
+      success_events: 0
+  boundary_cases:
+  - id: target_tangent
+    initial_override:
+      position:
+      - -2
+      - 0.1
+      velocity:
+      - 10
+      - 0
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: success
+      time: 0.2
+      position:
+      - 0
+      - 0.1
+  - id: collision_and_target_same
+    collision_disk:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+      mu: 0
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: collision
+      time: 0.19
+      success_events: 0
+  - id: initial_inside_goal
+    initial_override:
+      position:
+      - 0
+      - 0
+      velocity:
+      - 0
+      - 0
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: success
+      time: 0
+  - id: initial_inside_collision_and_goal
+    initial_override:
+      position:
+      - 0
+      - 0
+      velocity:
+      - 0
+      - 0
+    collision_disk:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+      mu: 0
+    goal:
+      center:
+      - 0
+      - 0
+      radius: 0.1
+    expected:
+      status: collision
+      time: 0
+      success_events: 0
+interaction_walkthrough:
+- load mission
+- inspect units and circular baseline
+- set candidate impulse
+- preview and inspect required fuel
+- cancel preview and verify unchanged state
+- set approved fixture impulse
+- preview
+- confirm once
+- pause and resume
+- read terminal result
+- reset
+presentation_review:
+  viewport:
+  - 1280
+  - 720
+  required_fields:
+  - simulation time and unit
+  - position and velocity units
+  - fuel and mass unit
+  - predicted/actual labels
+  - physical plane and axis directions
+  - effective collision and goal radii
+  - fixed-source assumption
+  - terminal cause and time
+  keyboard_actions:
+  - select scenario
+  - edit impulse
+  - preview
+  - cancel preview
+  - confirm
+  - pause/resume
+  - change playback rate
+  - inspect result
+  - reset
