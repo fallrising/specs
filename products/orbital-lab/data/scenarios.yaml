@@ -431,6 +431,7 @@ high_speed_events:
     - 10
     - 100
     reference: force-free r(t)=r(0)+v*t; all event times analytic
+    collision_disk_meaning: a collision_disk is a fixed source with mu 0; center maps to position and radius to collision_radius. It counts toward limits.gravity_sources_max and applies no force.
   target_crossing:
     goal:
       center:

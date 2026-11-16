@@ -18,6 +18,9 @@ cluster:
   request_identity_components: [客戶端身分, 請求識別]
   successful_write_result: 已確認
   rejected_identity_result: 請求識別衝突
+  unavailable_result: 不可用
+  unavailable_semantics: 只表示這次嘗試沒有取得結果，不是該邏輯操作的失敗結論。歷史分析把它當作未完成操作（可能已生效，也可能沒有）；同一請求可以重送並延續原操作；不可用不得被記成原結果，也不得讓之後的重送永遠得到不可用。
+  client_names_are_identities_only: 客戶端名稱只是身分；reader 也可以寫入，writer 也可以讀取。
 baseline_case:
   alive_members: [A, B, C, D, E]
   initial_values: {}
@@ -88,9 +91,15 @@ partition_case:
   majority_client_reachable: [C, D, E]
   within_majority_delivery_bound_ticks: 2
   processing_fairness: 每個存活且可達的節點在每個時間點都有處理機會
+  pre_partition: 第 0 至 9 時間點為全體連通的穩定叢集，沒有其他故障。
   new_operations:
     - {request: minority-new, client: writer, action: write, key: minority-key, value: 紅, invoke: 12, via: A, expected: 未確認或不可用}
     - {request: majority-new, client: reader, action: write, key: majority-key, value: 藍, invoke: 12, via: C, complete_by: 30, expected: 已確認}
+  minority_stale_read_probe:
+    purpose: 少數側不得以本地舊資料回覆新的讀取；majority-new 已在此讀取開始前完成，合法結果只有藍或沒有結果。
+    operation: {request: minority-stale-read, client: reader, action: read, key: majority-key, invoke_after: majority-new 已確認, via: A, expected: 未確認或不可用, forbidden_result: 不存在}
+    partition_remains_through: 40
+    observe_through_tick: 40
   minority_may_return_prior_confirmed_result: true
   minority_may_confirm_new_write: false
 durability_case:
@@ -137,6 +146,8 @@ retry_cases:
     expected_distinct_logical_operations: 1
     expected_values_after: {x: 紅}
 fault_trace:
+  delivery_mode: 手動。待送訊息在使用者選擇傳遞、延遲或丟棄之前保持待送；default_delivery_delay_ticks 只適用自動推進。
+  message_binding: m-one 等是本案例給待送訊息的別名，綁定到方向相符的實際待送訊息。該時刻若沒有足夠的待送訊息，可以改用節點收到後不處理的診斷訊息，日誌須標明是診斷訊息。
   initial_pending_messages:
     - {id: m-one, from: A, to: B, content_label: 保持不變的訊息甲}
     - {id: m-two, from: A, to: B, content_label: 保持不變的訊息乙}
@@ -178,6 +189,7 @@ counterfactual_case:
   prefix_and_original_are_immutable: true
 teaching_fixture:
   basis: partition_case
+  precondition: 分割開始前 A 自述 leader。可用任何有記錄的事件選擇達成（例如節點處理先後），達成方式須列入重播資料；沒有 leader 概念的實作改用等價的自述角色並說明。
   displayed_states:
     - {node: A, self_reported_role: leader, leadership_generation: 7, connected_group: [A, B], new_write_result: 未確認}
     - {node: C, self_reported_role: leader, leadership_generation: 8, connected_group: [C, D, E], new_write_result: 已確認}

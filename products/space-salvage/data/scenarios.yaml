@@ -10,6 +10,7 @@ units:
 mission:
   target_value: 600
   target_duration_seconds: 600
+  target_duration_meaning: pacing target for content sizing only; not a rule, not shown as a limit, never changes an ending
   hard_limit_seconds: 900
   initial_state:
     template: ship
@@ -397,6 +398,10 @@ power:
   source_control_location: dock-always-accessible
   reachability: undirected-intact-closed-path-to-active-source
   switch_access: existing paths may be isolated from the dock panel without moving a module
+  live_joint_rule: a joint bound to a path is live when either end module is powered by any route; opening only the joint's own path does not make it cuttable while an end stays powered
+  cut_path_rule: a successful cut removes the bound path for the rest of the mission; its switch is disabled and cannot re-close it
+  recovered_module_rule: a recovered module no longer exists for power; paths ending on it are removed, and recovering the source module leaves every module unpowered
+  power_scope: power state gates cutting only; it never blocks tether, intake acceptance or exit
   baseline:
     topology: tree
     paths:
@@ -557,7 +562,7 @@ power:
     physical_cable_simulation: false
 handling:
   max_tether_distance_m: 15
-  max_group_mass_kg: 240
+  max_group_mass_kg: 200
   max_speed_m_per_s: 2
   gravity_m_per_s2: 0
   free_drift_drag: 0
@@ -705,6 +710,15 @@ cases:
     - try-cut-s07
     - source-off
     - cut-s07
+    own_path_isolated_probe:
+      note: independent probe from mission.initial_state; isolating the joint's own path is not enough
+      source_on: true
+      open_paths:
+      - e07
+      powered_end: m06
+      action: try-cut-s07
+      expected_result: live-path-rejected
+      expected_cut_joints: []
     expected_powered_modules: []
     expected_detached_groups:
     - *id001
@@ -752,6 +766,10 @@ cases:
     - m23
     - m24
     group_mass_kg: 60
+    setup:
+      source_on: false
+      cut_joints:
+      - s12
     start_distance_m: 10
     release_velocity_m_per_s:
     - 1
@@ -772,13 +790,31 @@ cases:
       distance_m: 16
       reason: out-of-range
     - selection: detached-group-over-mass-limit
-      mass_kg: 250
+      setup:
+        source_on: false
+        cut_joints:
+        - s03
+      group:
+      - m04
+      - m09
+      - m10
+      - m15
+      - m16
+      - m17
+      - m18
+      - m27
+      - m28
+      - m29
+      - m30
+      mass_kg: 210
       reason: too-heavy
     - selection: already-recovered-group
+      note: recovered modules have left the scene; this covers a stale selection or a repeated command naming an accepted batch
       reason: already-recovered
   intake_oversize:
     group: *id001
     group_volume_units: 14
+    source_on: false
     expected_first_result: capacity-exceeded
     expected_first_value: 0
     subsequent_cuts:

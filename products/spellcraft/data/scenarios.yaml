@@ -83,6 +83,7 @@ arena:
   - 0
   - -10
   target_radius_m: 0.4
+  line_of_sight_note: T01, T02 and T03 are each directly hittable from cast_origin_m; T04 lies fully behind T01 and can only be hit after T01 dies
   seed: 1729
   business_randomness: none
   cast_cooldown_seconds: 0.25
@@ -101,8 +102,8 @@ arena:
       health: 100
     - id: T03
       position_m:
+      - -4
       - 0
-      - 4
       health: 100
     - id: T04
       position_m:
@@ -128,6 +129,11 @@ projectile:
   - -15
   - 0
   - 15
+  aim: a direction from the cast origin fixed when the cast is accepted; a delayed stage keeps that direction
+  split_angle_convention: degrees from the aim direction, positive is counter-clockwise with +x right and +y up
+  projectile_order: index in split_angles_degrees; a stage without split emits one projectile with index 0
+  emission_heading: aim direction rotated by the projectile's split angle; with homing this is the recorded emission heading and steering applies from the first event step after emission
+  hit_detection: the projectile is a point; each event step tests the whole path travelled in that step against target discs of target_radius_m, boundary inclusive; a hit is recorded at the end time of that step; several targets reached in one step are ordered by distance travelled, then target id
   homing_radius_m: 12
   homing_selection: nearest alive target from emission origin, tie by target id
   homing_steering: during each event step, head directly toward the locked target current position without exceeding
@@ -142,6 +148,7 @@ projectile:
 budgets:
   emissions_per_cast: 12
   secondary_propagations_per_cast: 4
+  emission_budget_reachability: under the current composition limits a legal spell emits at most 7 projectiles, so the emission budget cannot bind; it is a guard for later content, has no exhaustion case, and only its remaining value is checked
   secondary_consumers:
   - each-conduction-recipient
   - each-oil-tile-ignition
@@ -183,6 +190,7 @@ elements:
     wet_direct_damage: 30
     conduction_damage: 30
     conduction_radius_m: 4
+    conduction_radius_inclusive: true
     max_secondary_targets_per_direct_hit: 2
     secondary_selection: still-wet alive targets, distance from struck target then target id, exclude struck target
     wet_rule: consume wet on direct and secondary victims
@@ -449,6 +457,9 @@ cases:
       - 1
       - 10
       alive: true
+    aim_point_m:
+    - 0
+    - 10
     accepted_cast_time: 0
     expected_emission_time: 0.5
     expected_emission_count: 3
@@ -855,6 +866,8 @@ oil:
   - 5
   - 5
   cell_size_m: 1
+  cell_mapping: cell [i, j] covers x in [i-2.5, i-1.5) and y in [j-2.5, j-1.5) metres of the arena, so cell [2, 2] is centred on arena position [0, 0]; a target stands on the cell containing its centre
+  hit_outside_grid: no oil is placed, the event is logged as outside-oil-grid, mana is not refunded
   direct_damage: 0
   max_spread_cells_per_cast: 4
   spread_interval_seconds: 0.5

@@ -14,7 +14,13 @@ limits:
   resource_instances_max: 6
   scenario_horizon_max: 480
   finite_orders_only: true
+  order_quantity_max: 1
+  order_quantity_note: every fixture order is one unit through the route once; a scenario with another quantity is rejected at load until batching rules are specified
   external_event_time_quantum: 0.5
+fault_semantics:
+  interval: half-open [start, end); the resource may start work again at end
+  reported_at: the fault and its repair end become known at the fault start tick; a plan made earlier may not anticipate it
+  facts_kept_on_replan: operations finished or already running at reported_at, and transports already started
 event_order:
 - finish_due_operations
 - apply_faults_and_cancellations
@@ -494,6 +500,7 @@ before_start_fault:
     interval:
     - 3
     - 5
+    reported_at: 3
   replanned_witness:
   - order: A
     operation: cut
@@ -560,6 +567,16 @@ interruption_policy:
   cancel_during_transport: finish current transport, leave cargo at destination, then cancel remaining operations
   cancel_delivered: reject; delivered inventory unchanged
   duplicate_identity: same report ID and same content applies once; same ID with different content is rejected
+  unsupported: a fault that starts while its resource is running an operation other than mini assembly (a carrier in transport included), and a cancellation requested while the order is in a cut operation, are rejected as unsupported-interruption; no state changes and the reporter may retry later. Before M3 a fault that starts during assembly is rejected the same way. A fault that starts while its resource is idle is an ordinary before-start fault on any resource.
+unsupported_interruptions:
+- id: cutter_fault_during_cut
+  base: mini
+  report: {kind: fault, resource: cutter1, interval: [1, 3]}
+  expected: {rejected: true, reason: unsupported-interruption, state_changed: false}
+- id: cancel_during_cut
+  base: mini
+  report: {kind: cancellation, order: A, cancel_time: 1}
+  expected: {rejected: true, reason: unsupported-interruption, order_state: in_progress, state_changed: false}
 during_processing_fault:
   base: mini
   initial_stock_override:
@@ -579,6 +596,7 @@ during_processing_fault:
     interval:
     - 4
     - 6
+    reported_at: 4
     interrupted_order: A
   expected_after_fault:
     time: 4
