@@ -120,6 +120,25 @@ class CheckSpecsTest(unittest.TestCase):
         self.assertEqual(self.errors(), [])
         self.assertIn("REQ-EX-01 改過的標題：AC-EX-01", (self.pdir / "milestones.md").read_text(encoding="utf-8"))
 
+    def test_milestone_status_value(self):
+        self.edit("milestones.md", "- 狀態：draft", "- 狀態：done")
+        self.assertError("M1 的狀態必須是 draft 或 approved")
+
+    def test_milestone_without_status_is_draft(self):
+        self.edit("milestones.md", "- 狀態：draft\n", "")
+        self.assertEqual(self.errors(), [])
+
+    def test_approved_milestone_requires_approved_files(self):
+        self.edit("milestones.md", "- 狀態：draft", "- 狀態：approved")
+        check_specs.run(self.tmp, fix=True)
+        errs = self.errors()
+        self.assertTrue(any("milestones.md 的 status 必須是 approved" in e for e in errs), errs)
+        self.assertTrue(any("REQ-EX-01 屬於已批准的 M1" in e for e in errs), errs)
+        self.edit("milestones.md", "status: draft", "status: approved")
+        self.edit("requirements/example.md", "status: draft", "status: approved")
+        self.assertEqual(self.errors(), [])
+        self.assertIn("**M1 名稱（approved）**", (self.pdir / "milestones.md").read_text(encoding="utf-8"))
+
     def test_broken_link(self):
         self.append("prd.md", "\n[x](nope.md)\n")
         self.assertError("連結目標不存在：nope.md")

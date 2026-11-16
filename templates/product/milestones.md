@@ -6,6 +6,7 @@ status: draft
 
 ## M1 名稱
 
+- 狀態：draft
 - 目標：
 - 退出條件：範圍內每條 AC 有通過證據；`人工確認` 的 AC 由 owner 確認。
 - 不做：

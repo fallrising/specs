@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # PRD：群雄・三國卡牌（暫名）
