@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover
     sys.exit("PyYAML is required: pip install pyyaml")
 
 STATUSES = {"draft", "approved", "superseded"}
+MILESTONE_STATUSES = {"draft", "approved"}
 PRIORITIES = {"必要", "應有", "可選"}
 VERIFY = {"自動", "手動", "人工確認"}
 WITHDRAWN = "[撤回]"
@@ -139,24 +140,33 @@ def parse_requirements(path: Path, text: str, area: str, rep: Report):
 
 
 def parse_milestones(path: Path, text: str):
-    out: "OrderedDict[str, tuple[str, int]]" = OrderedDict()
+    """Return {id: (title, line, status)}; status is the section's `- 狀態：` value or None."""
+    out: "OrderedDict[str, tuple[str, int, str | None]]" = OrderedDict()
     in_gen = False
+    cur = None
     for n, line in enumerate(text.splitlines(), 1):
         if line.strip() == GEN_BEGIN:
             in_gen = True
+            cur = None
         elif line.strip() == GEN_END:
             in_gen = False
         elif not in_gen:
             m = MILESTONE_HEADING.match(line)
             if m:
-                out[m.group(1)] = (m.group(2).strip(), n)
+                cur = m.group(1)
+                out[cur] = (m.group(2).strip(), n, None)
+            elif line.startswith("#"):
+                cur = None
+            elif cur and line.startswith("- 狀態："):
+                title, ln, _ = out[cur]
+                out[cur] = (title, ln, line.split("：", 1)[1].strip())
     return out
 
 
 def render_scope(milestones, reqs: list[Req]) -> str:
     lines = [GEN_BEGIN, "", "## 範圍索引（自動產生，勿手改）", ""]
-    for mid, (title, _) in milestones.items():
-        lines.append(f"**{mid} {title}**")
+    for mid, (title, _, status) in milestones.items():
+        lines.append(f"**{mid} {title}（approved）**" if status == "approved" else f"**{mid} {title}**")
         lines.append("")
         scoped = [r for r in reqs if r.milestone == mid and not r.withdrawn]
         if not scoped:
@@ -267,6 +277,13 @@ def check_product(pdir: Path, rep: Report, fix: bool = False, expected_slug: str
     milestones = parse_milestones(mpath, texts[mpath]) if mpath in texts else OrderedDict()
     if mpath in texts and not milestones:
         rep.err(mpath, None, "沒有任何 `## M<n> 名稱` 里程碑")
+    for mid, (_, mline, mstatus) in milestones.items():
+        # A milestone without a 狀態 line is draft.
+        if mstatus is not None and mstatus not in MILESTONE_STATUSES:
+            rep.err(mpath, mline, f"{mid} 的狀態必須是 draft 或 approved，目前是 {mstatus!r}")
+    approved = {mid for mid, v in milestones.items() if v[2] == "approved"}
+    if approved and metas.get(mpath, {}).get("status") != "approved":
+        rep.err(mpath, 1, "有里程碑為 approved 時，milestones.md 的 status 必須是 approved")
 
     reqs: list[Req] = []
     areas: dict[str, Path] = {}
@@ -299,6 +316,8 @@ def check_product(pdir: Path, rep: Report, fix: bool = False, expected_slug: str
             rep.err(r.path, r.line, f"{r.id} 缺少「- 里程碑：M<n>」")
         elif r.milestone not in milestones:
             rep.err(r.path, r.line, f"{r.id} 的里程碑 {r.milestone} 不在 milestones.md")
+        if r.milestone in approved and metas.get(r.path, {}).get("status") != "approved":
+            rep.err(r.path, r.line, f"{r.id} 屬於已批准的 {r.milestone}，所在檔案的 status 必須是 approved")
         if r.priority is not None and r.priority not in PRIORITIES:
             rep.err(r.path, r.line, f"{r.id} 的優先必須是 {'／'.join(sorted(PRIORITIES))}")
         live = [a for a in r.acs if not a.withdrawn]

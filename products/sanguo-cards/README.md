@@ -1,9 +1,9 @@
 ---
 product: sanguo-cards
 title: 群雄・三國卡牌（暫名）
-status: draft
+status: approved
 impl_repos: []
-desk_cards: []
+desk_cards: [T-0453]
 ---
 
 # 群雄・三國卡牌（暫名）
@@ -12,9 +12,9 @@ desk_cards: []
 
 | 項目 | 內容 |
 | --- | --- |
-| 狀態 | draft：等 owner 審閱；M1 相關文件轉 `approved` 後才開 desk 卡 |
+| 狀態 | M1 approved（2026-11-17）；M2、M3 draft |
 | 實作 repo | 未建立（建議 `fallrising/sanguo-cards`） |
-| desk 卡 | 無 |
+| desk 卡 | T-0453（M1） |
 | 業務指定技術 | three.js（C-01）、純靜態網站（C-02） |
 
 ## 文件

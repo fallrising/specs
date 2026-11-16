@@ -23,7 +23,7 @@
 | status | 意思 |
 | --- | --- |
 | `draft` | owner 同意收錄，尚未批准實作。AC 可以再改。 |
-| `approved` | owner 批准實作。AC 鎖定，desk 卡可以指向它並開工。 |
+| `approved` | 至少一個里程碑已由 owner 批准實作。哪些 REQ／AC 已鎖定，看里程碑狀態（§4）。 |
 | `superseded` | 已被取代。frontmatter 加 `superseded_by: <路徑>`。 |
 
 產品 `README.md` 的 frontmatter 另含 `product`（等於 slug）、`title`、`impl_repos`（清單）、`desk_cards`（清單）。
@@ -57,7 +57,10 @@
 
 ## 4. 里程碑
 
-`milestones.md` 用 `## M<n> <名稱>` 分節，每節寫：目標、退出條件、明確不做的事。範圍以 REQ 上的 `里程碑` 欄為唯一來源；`milestones.md` 尾端的範圍索引由 `check_specs.py --fix` 產生，不手改。
+`milestones.md` 用 `## M<n> <名稱>` 分節，每節寫：狀態、目標、退出條件、明確不做的事。
+
+**批准以里程碑為單位。** 每節用 `- 狀態：draft` 或 `- 狀態：approved` 標示，沒寫視為 draft。里程碑 approved 之後，屬於它的 REQ 與 AC 鎖定，desk 卡可以指向它開工；同一個檔案裡屬於 draft 里程碑的 REQ 仍可修改。含有已批准里程碑 REQ 的需求檔與 `milestones.md`，檔案 `status` 寫 `approved`。
+範圍以 REQ 上的 `里程碑` 欄為唯一來源；`milestones.md` 尾端的範圍索引由 `check_specs.py --fix` 產生，不手改。
 
 一個里程碑通常對應一張 desk 卡；一張 desk 卡只對一個項目 repo（desk 運作方法 §0）。跨 repo 的里程碑由 desk 拆子卡，SDD 不用拆。
 
@@ -69,8 +72,8 @@ YAML，給人審也給項目直接讀取，是內容的唯一來源。項目不�
 
 ## 6. 變更與版本
 
-- 所有改動走 PR，owner 同意才合併。`draft → approved` 也是一個 PR，只改 status 與 changelog。
-- 改動 `approved` 內容時，同一 PR 在 `changelog.md` 加一筆：日期、差異、受影響的 REQ／AC、受影響的 desk 卡。項目執行中的 desk 卡依 desk 規則記一筆並停下等重審。
+- 所有改動走 PR，owner 同意才合併。里程碑轉 `approved` 也是一個 PR：改里程碑狀態、相關檔案的 `status` 與 changelog。合併前由作者以外的 agent 獨立推導可計算的 AC 預期值，結果記在 PR（desk 運作方法 §3 驗收方式）。
+- 改動已批准里程碑的 REQ／AC 時，同一 PR 在 `changelog.md` 加一筆：日期、差異、受影響的 REQ／AC、受影響的 desk 卡。項目執行中的 desk 卡依 desk 規則記一筆並停下等重審。
 - 版本以 specs 的 commit SHA 識別。項目開工與交付時記下所依據的 SHA（共同治理契約「引用與依賴方向」）。
 
 ## 7. 項目如何取用

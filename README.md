@@ -16,7 +16,7 @@ products/<slug>/  ──spec──▶  tasks/T-####/task.md ──▶  技術設
 
 | 產品 | 名稱 | 狀態 | 實作 repo | 入口 |
 | --- | --- | --- | --- | --- |
-| `sanguo-cards` | 群雄・三國卡牌（暫名），three.js 網頁卡牌對戰 | draft | 未建立 | [README](products/sanguo-cards/README.md) |
+| `sanguo-cards` | 群雄・三國卡牌（暫名），three.js 網頁卡牌對戰 | M1 approved | 未建立 | [README](products/sanguo-cards/README.md) |
 | `mmo-economy` | MMO 經濟危機實驗室：生產、交易、查帳與政策分支 | draft | 未指定 | [README](products/mmo-economy/README.md) |
 | `space-salvage` | 太空船打撈：拆卸、供電、回收與撤離 | draft | 未指定 | [README](products/space-salvage/README.md) |
 | `spellcraft` | 魔法編譯器：組合法術、交互作用與逐步解釋 | draft | 未指定 | [README](products/spellcraft/README.md) |
