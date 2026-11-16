@@ -1,0 +1,210 @@
+schema: mmo-economy-business/v1
+status: draft
+units:
+  money: 整數銅幣
+  quantity: 整數件
+  time: 遊戲小時
+baseline:
+  seed: 20261116
+  horizon_days: 90
+  day_hours: 24
+  first_day_number: 1
+  max_actors: 1000
+  max_items: 12
+  initial_cash_per_actor: 100000
+  initial_raw_units_per_gatherer: 10
+  initial_other_inventory: 0
+  order_lifetime_hours: 24
+population:
+  - {role: miner, count: 100, output: iron_ore}
+  - {role: herbalist, count: 100, output: herb}
+  - {role: woodcutter, count: 100, output: timber}
+  - {role: smith, count: 200, chain: metal}
+  - {role: alchemist, count: 200, chain: alchemy}
+  - {role: carpenter, count: 200, chain: wood}
+  - {role: adventurer, count: 100}
+items:
+  - {id: iron_ore, name: 鐵礦, chain: metal, initial_ask: 100}
+  - {id: iron_ingot, name: 鐵錠, chain: metal, initial_ask: 300}
+  - {id: blade, name: 劍胚, chain: metal, initial_ask: 700}
+  - {id: sword, name: 劍, chain: metal, initial_ask: 1500}
+  - {id: herb, name: 草藥, chain: alchemy, initial_ask: 100}
+  - {id: essence, name: 藥精, chain: alchemy, initial_ask: 300}
+  - {id: tonic, name: 藥液, chain: alchemy, initial_ask: 700}
+  - {id: potion, name: 藥水, chain: alchemy, initial_ask: 1500}
+  - {id: timber, name: 木材, chain: wood, initial_ask: 100}
+  - {id: plank, name: 木板, chain: wood, initial_ask: 300}
+  - {id: bow_frame, name: 弓架, chain: wood, initial_ask: 700}
+  - {id: bow, name: 弓, chain: wood, initial_ask: 1500}
+recipes:
+  - {id: MET-01, chain: metal, input: iron_ore, input_qty: 2, output: iron_ingot, output_qty: 1, hours: 4}
+  - {id: MET-02, chain: metal, input: iron_ingot, input_qty: 2, output: blade, output_qty: 1, hours: 4}
+  - {id: MET-03, chain: metal, input: blade, input_qty: 2, output: sword, output_qty: 1, hours: 4}
+  - {id: ALC-01, chain: alchemy, input: herb, input_qty: 2, output: essence, output_qty: 1, hours: 4}
+  - {id: ALC-02, chain: alchemy, input: essence, input_qty: 2, output: tonic, output_qty: 1, hours: 4}
+  - {id: ALC-03, chain: alchemy, input: tonic, input_qty: 2, output: potion, output_qty: 1, hours: 4}
+  - {id: WOD-01, chain: wood, input: timber, input_qty: 2, output: plank, output_qty: 1, hours: 4}
+  - {id: WOD-02, chain: wood, input: plank, input_qty: 2, output: bow_frame, output_qty: 1, hours: 4}
+  - {id: WOD-03, chain: wood, input: bow_frame, input_qty: 2, output: bow, output_qty: 1, hours: 4}
+behavior:
+  decision_order: 每日按職業清單順序，再按角色編號；基準策略不含隨機抽樣，seed作情境識別，評測以實際輸入變更覆蓋不同情境，不宣稱僅改seed會改變結果。
+  phase_order: [expiry, job_completion, quest_reward, relist, purchase_and_start_work, consumption, report]
+  gathering: {hours: 6, output_qty: 8, max_jobs_per_day: 1}
+  manufacturing:
+    max_jobs_per_day: 1
+    batch_size: 1
+    decision: 以目前最低可購報價計算每個配方單批投入價；自有原料也用該價格估機會成本，無報價時用自身當日報價。費後收益為自身產出報價減預估成交費、投入價與本批修理費。只考慮正收益、可負擔且原料可取得的候選，選最高費後收益，同分按配方編號。
+    missing_supply: 等待下一日，不根據未來商品啟動；當日購買與開工時重新檢查條件。
+  adventurer:
+    quest_reward_per_day: 5000
+    demand_priority: [potion, sword, bow]
+    potion_units_per_day: 1
+    equipment_consumption_interval_days: 10
+    equipment_units_each: 1
+    unfilled_demand: 記錄未滿足，不借款、不累積補購；裝備只在第10日及其倍數提出當日需求。
+  repair: {fee_per_completed_job: 10, insufficient_cash: 可支付多少就銷毀多少，餘額最低零，不形成債務}
+  listing: 冒險者不出售；製造者對鏈內每種可作投入的商品保留一個配方批次，餘量掛單；採集者全部可用產出掛單。到期未售的非腐敗商品退回，下一日重新定價。保留投入不足時才依決策購買缺額。
+  consumption: 當日買到的需求商品於該日消耗階段消耗，不足不補造。
+market:
+  trade_kind: buyout
+  fee_basis_points: 200
+  fee_rounding: floor
+  fee_destination: destroyed
+  min_price: 1
+  max_price: 1000000
+  max_buy_price_multiplier_of_initial: 4
+  match_order: [ask_ascending, listed_time_ascending, order_id_ascending]
+  self_trade: forbidden
+  atomic_trade: 商品轉移、買方扣款、賣方收入與費用同時完成；任一不成立則全部不變。
+  daily_ask_rule:
+    sold_fraction_threshold: 0.5
+    increase_basis_points: 500
+    no_sales_decrease_basis_points: 500
+    rounding: floor_then_clamp
+    rule: 前日有掛單且售出比例達門檻則漲價；前日有掛單且完全沒賣出則降價；其他維持。首日使用initial_ask。比例以賣方該商品前日上架總量為分母。
+production_case:
+  worker: smith-001
+  recipe: MET-01
+  start_hour: 0
+  initial: {cash: 500, iron_ore: 2, iron_ingot: 0}
+  expected_started: {cash: 500, iron_ore: 0, iron_ingot: 0, unfinished_jobs: 1}
+  expected_before_hour_4: {cash: 500, iron_ore: 0, iron_ingot: 0, unfinished_jobs: 1}
+  expected_at_hour_4: {cash: 490, iron_ore: 0, iron_ingot: 1, unfinished_jobs: 0, repair_destroyed: 10}
+trade_case:
+  seller: {cash: 0, total_iron_ore: 10, escrow_iron_ore: 2}
+  buyer: {cash: 1000, iron_ore: 0}
+  order: {id: ORD-001, item: iron_ore, unit_price: 100, quantity: 2}
+  purchase: {id: BUY-001, quantity: 2}
+  expected_after_trade:
+    buyer_cash: 800
+    buyer_iron_ore: 2
+    seller_cash: 196
+    seller_total_iron_ore: 8
+    escrow_iron_ore: 0
+    fee_destroyed: 4
+    total_cash: 996
+money_case:
+  quest_reward_to_buyer: 50
+  repair_paid_by_buyer: 10
+  expected: {buyer_cash: 840, seller_cash: 196, total_cash: 1036, total_issued: 50, total_destroyed: 14}
+decision_case:
+  worker: smith-001
+  cash: 1000
+  inventory: {iron_ore: 2, iron_ingot: 2}
+  quotes: {iron_ore: 100, iron_ingot: 300, blade: 700, sword: 1500}
+  unavailable_inputs: [blade]
+  expected_recipe: MET-01
+  expected_net_margin: 84
+  price_update_examples:
+    - {previous_ask: 100, listed: 10, sold: 5, expected_ask: 105}
+    - {previous_ask: 100, listed: 10, sold: 0, expected_ask: 95}
+    - {previous_ask: 100, listed: 0, sold: 0, expected_ask: 100}
+intervention_case:
+  branch_day: 30
+  end_day: 40
+  common: 相同初始世界、既有義務、外生任務獎勵及角色決策順位。
+  A: {miner_output_qty: 8}
+  B: {miner_output_qty: 4}
+  price_expectation: 未指定；比較實際結果，不硬編方向。
+perishability:
+  enabled_in_baseline: false
+  introduced_in: M3
+  item: herb
+  lifetime_hours: 24
+  equality_rule: 當前時間大於或等於產生時間加壽命即到期。
+expiry_case:
+  item: herb
+  born_hour: 0
+  expires_hour: 24
+  order: {id: EXP-001, quantity: 2, unit_price: 100}
+  seller_cash: 0
+  buyer_cash: 1000
+  purchase_hour: 24
+  expected: {buyer_cash: 1000, seller_cash: 0, sellable_units: 0, expired_units: 2, completed_trades: 0, trade_fee: 0}
+  prior_job: {recipe: ALC-01, start_hour: 23, end_hour: 27, consumed_herb: 2, expected_essence: 1, additional_expired_inputs: 0}
+invalid_cases:
+  - {field: unit_price, value: -1, reason: 價格低於允許範圍}
+  - {field: quantity, value: 1.5, reason: 數量不是整數}
+  - {field: recipe_input, value: nonexistent_item, reason: 配方引用未知商品}
+  - {field: horizon_days, value: 0, reason: 模擬期間必須為正且不超過基準上限}
+performance:
+  status: proposed_not_measured
+  reference_device: null
+  resolution: [1920, 1080]
+  scale: baseline
+  warmup_runs: 1
+  measured_runs: 3
+  timing: 從情境已載入、使用者按下執行，到期間全部結算且結果可讀；包含帳務核對，不包含首次素材下載。
+  max_seconds_per_run: 60
+  max_pause_latency_seconds: 1
+  pause_check_day: 30
+  evidence: 每次耗時、尖峰記憶體、暫停延遲、完整帳務核對結果；不取最好一次。
+observation_tasks:
+  - 找到trade_case成交雙方、價格、數量、費用並說明總現金為何減少。
+  - 找到money_case任務獎勵與修理，對應到現金總額變化。
+  - 在無成交時段辨識無成交，不將掛單價格或商品估值誤當成交價。
+closed_loop_case:
+  mode: scheduled_decisions
+  purpose: 真正執行採集至消耗的整合案例；非自主策略或最終狀態預載。
+  actors:
+    - {id: loop-miner, role: miner, cash: 10000, inventory: {}}
+    - {id: loop-smith, role: smith, cash: 10000, inventory: {}}
+    - {id: loop-adventurer, role: adventurer, cash: 10000, inventory: {}}
+  start_hour: 0
+  end_hour: 216
+  end_phase: report
+  behavior_override: 只執行下列排定決策；不另行自主採集、定價、領獎、掛單或消耗。配方、工期、每日工作上限、交易費與每完成工作修理費照原規則。
+  actions:
+    - {hour: 0, actor: loop-adventurer, action: quest_reward, amount: 50}
+    - {hour: 0, actor: loop-miner, action: start_gathering, item: iron_ore}
+    - {hour: 24, actor: loop-miner, action: list, order: LOOP-RAW, item: iron_ore, quantity: 8, unit_price: 100}
+    - {hour: 24, actor: loop-smith, action: buy, request: LOOP-BUY-RAW, order: LOOP-RAW, quantity: 8}
+    - {hour: 24, actor: loop-smith, action: start_job, recipe: MET-01}
+    - {hour: 48, actor: loop-smith, action: start_job, recipe: MET-01}
+    - {hour: 72, actor: loop-smith, action: start_job, recipe: MET-01}
+    - {hour: 96, actor: loop-smith, action: start_job, recipe: MET-01}
+    - {hour: 120, actor: loop-smith, action: start_job, recipe: MET-02}
+    - {hour: 144, actor: loop-smith, action: start_job, recipe: MET-02}
+    - {hour: 168, actor: loop-smith, action: start_job, recipe: MET-03}
+    - {hour: 216, actor: loop-smith, action: list, order: LOOP-SWORD, item: sword, quantity: 1, unit_price: 1500}
+    - {hour: 216, actor: loop-adventurer, action: buy, request: LOOP-BUY-SWORD, order: LOOP-SWORD, quantity: 1}
+    - {hour: 216, actor: loop-adventurer, action: consume, item: sword, quantity: 1}
+  expected:
+    first_raw_output_hour: 6
+    ingot_completion_hours: [28, 52, 76, 100]
+    blade_completion_hours: [124, 148]
+    sword_completion_hour: 172
+    harvested: {iron_ore: 8}
+    manufactured: {iron_ingot: 4, blade: 2, sword: 1}
+    consumed_final_goods: {sword: 1}
+    final_inventory_all_actors: {}
+    final_escrow: {}
+    final_unfinished_jobs: 0
+    completed_trades: 2
+    cash: {loop-miner: 10774, loop-smith: 10600, loop-adventurer: 8550}
+    initial_total_cash: 30000
+    total_cash: 29924
+    issued: 50
+    repair_destroyed: 80
+    trade_fees_destroyed: 46
+    total_destroyed: 126

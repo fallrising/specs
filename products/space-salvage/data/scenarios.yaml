@@ -1,0 +1,997 @@
+content: space-salvage-business-scenarios
+status: draft
+expected_results: proposed-not-reference-validated
+units:
+  time: seconds
+  distance: metres
+  mass: kilograms
+  value: salvage-credit
+  volume: abstract-volume-unit
+mission:
+  target_value: 600
+  target_duration_seconds: 600
+  hard_limit_seconds: 900
+  initial_state:
+    template: ship
+    source_on: true
+    all_power_paths_closed: true
+    cut_joints: []
+    recovered_modules: []
+    elapsed_active_seconds: 0
+    value: 0
+  endings:
+    normal_exit_at_target: completed
+    normal_exit_below_target: early_exit
+    emergency_return: emergency_exit
+    time_limit: timeout
+  pause_conditions:
+  - pause-menu
+  - instructions
+  - input-focus-lost
+  safe_location: dock
+ship:
+  module_count: 30
+  anchor: m01
+  protected_modules:
+  - m01
+  - m02
+  door_module: m07
+  modules:
+  - id: m01
+    name: 安全艙口
+    volume_units: 3
+    mass_kg: 30
+    value: 0
+    recoverable: false
+  - id: m02
+    name: 保護走廊
+    volume_units: 3
+    mass_kg: 30
+    value: 0
+    recoverable: false
+  - id: m03
+    name: 反應爐
+    volume_units: 4
+    mass_kg: 40
+    value: 400
+    recoverable: true
+  - id: m04
+    name: 左舷骨架
+    volume_units: 3
+    mass_kg: 30
+    value: 60
+    recoverable: true
+  - id: m05
+    name: 右舷骨架
+    volume_units: 3
+    mass_kg: 30
+    value: 60
+    recoverable: true
+  - id: m06
+    name: 中央骨架
+    volume_units: 3
+    mass_kg: 30
+    value: 60
+    recoverable: true
+  - id: m07
+    name: 手動艙門
+    volume_units: 2
+    mass_kg: 20
+    value: 50
+    recoverable: true
+  - id: m08
+    name: 貨架底座
+    volume_units: 2
+    mass_kg: 20
+    value: 40
+    recoverable: true
+  - id: m09
+    name: 冷卻機
+    volume_units: 3
+    mass_kg: 30
+    value: 140
+    recoverable: true
+  - id: m10
+    name: 線纜盤
+    volume_units: 1
+    mass_kg: 10
+    value: 40
+    recoverable: true
+  - id: m11
+    name: 電池座
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m12
+    name: 工具櫃
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m13
+    name: 貨箱甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m14
+    name: 貨箱乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m15
+    name: 散熱器甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m16
+    name: 散熱器乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m17
+    name: 管件甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m18
+    name: 管件乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m19
+    name: 蓄電池甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m20
+    name: 蓄電池乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m21
+    name: 工具箱甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m22
+    name: 工具箱乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m23
+    name: 貨包甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m24
+    name: 貨包乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m25
+    name: 貨包丙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m26
+    name: 貨包丁
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m27
+    name: 冷卻桶甲
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m28
+    name: 冷卻桶乙
+    volume_units: 2
+    mass_kg: 20
+    value: 100
+    recoverable: true
+  - id: m29
+    name: 金屬料甲
+    volume_units: 1
+    mass_kg: 10
+    value: 50
+    recoverable: true
+  - id: m30
+    name: 金屬料乙
+    volume_units: 1
+    mass_kg: 10
+    value: 50
+    recoverable: true
+  joints:
+  - id: s01
+    ends:
+    - m01
+    - m02
+    cuttable: false
+    power_path: e01
+  - id: s02
+    ends:
+    - m02
+    - m03
+    cuttable: true
+    power_path: e02
+  - id: s03
+    ends:
+    - m02
+    - m04
+    cuttable: true
+    power_path: e03
+  - id: s04
+    ends:
+    - m02
+    - m05
+    cuttable: true
+    power_path: e04
+  - id: s05
+    ends:
+    - m02
+    - m06
+    cuttable: true
+    power_path: e05
+  - id: s06
+    ends:
+    - m06
+    - m07
+    cuttable: true
+    power_path: e06
+  - id: s07
+    ends:
+    - m06
+    - m08
+    cuttable: true
+    power_path: e07
+  - id: s08
+    ends:
+    - m04
+    - m09
+    cuttable: true
+    power_path: e08
+  - id: s09
+    ends:
+    - m04
+    - m10
+    cuttable: true
+    power_path: e09
+  - id: s10
+    ends:
+    - m05
+    - m11
+    cuttable: true
+    power_path: e10
+  - id: s11
+    ends:
+    - m05
+    - m12
+    cuttable: true
+    power_path: e11
+  - id: s12
+    ends:
+    - m08
+    - m13
+    cuttable: true
+    power_path: e12
+  - id: s13
+    ends:
+    - m08
+    - m14
+    cuttable: true
+    power_path: e13
+  - id: s14
+    ends:
+    - m09
+    - m15
+    cuttable: true
+    power_path: e14
+  - id: s15
+    ends:
+    - m09
+    - m16
+    cuttable: true
+    power_path: e15
+  - id: s16
+    ends:
+    - m10
+    - m17
+    cuttable: true
+    power_path: e16
+  - id: s17
+    ends:
+    - m10
+    - m18
+    cuttable: true
+    power_path: e17
+  - id: s18
+    ends:
+    - m11
+    - m19
+    cuttable: true
+    power_path: e18
+  - id: s19
+    ends:
+    - m11
+    - m20
+    cuttable: true
+    power_path: e19
+  - id: s20
+    ends:
+    - m12
+    - m21
+    cuttable: true
+    power_path: e20
+  - id: s21
+    ends:
+    - m12
+    - m22
+    cuttable: true
+    power_path: e21
+  - id: s22
+    ends:
+    - m13
+    - m23
+    cuttable: true
+    power_path: e22
+  - id: s23
+    ends:
+    - m13
+    - m24
+    cuttable: true
+    power_path: e23
+  - id: s24
+    ends:
+    - m14
+    - m25
+    cuttable: true
+    power_path: e24
+  - id: s25
+    ends:
+    - m14
+    - m26
+    cuttable: true
+    power_path: e25
+  - id: s26
+    ends:
+    - m15
+    - m27
+    cuttable: true
+    power_path: e26
+  - id: s27
+    ends:
+    - m16
+    - m28
+    cuttable: true
+    power_path: e27
+  - id: s28
+    ends:
+    - m17
+    - m29
+    cuttable: true
+    power_path: e28
+  - id: s29
+    ends:
+    - m18
+    - m30
+    cuttable: true
+    power_path: e29
+power:
+  source_module: m03
+  source_control_location: dock-always-accessible
+  reachability: undirected-intact-closed-path-to-active-source
+  switch_access: existing paths may be isolated from the dock panel without moving a module
+  baseline:
+    topology: tree
+    paths:
+    - id: e01
+      ends:
+      - m01
+      - m02
+      initially_closed: true
+    - id: e02
+      ends:
+      - m02
+      - m03
+      initially_closed: true
+    - id: e03
+      ends:
+      - m02
+      - m04
+      initially_closed: true
+    - id: e04
+      ends:
+      - m02
+      - m05
+      initially_closed: true
+    - id: e05
+      ends:
+      - m02
+      - m06
+      initially_closed: true
+    - id: e06
+      ends:
+      - m06
+      - m07
+      initially_closed: true
+    - id: e07
+      ends:
+      - m06
+      - m08
+      initially_closed: true
+    - id: e08
+      ends:
+      - m04
+      - m09
+      initially_closed: true
+    - id: e09
+      ends:
+      - m04
+      - m10
+      initially_closed: true
+    - id: e10
+      ends:
+      - m05
+      - m11
+      initially_closed: true
+    - id: e11
+      ends:
+      - m05
+      - m12
+      initially_closed: true
+    - id: e12
+      ends:
+      - m08
+      - m13
+      initially_closed: true
+    - id: e13
+      ends:
+      - m08
+      - m14
+      initially_closed: true
+    - id: e14
+      ends:
+      - m09
+      - m15
+      initially_closed: true
+    - id: e15
+      ends:
+      - m09
+      - m16
+      initially_closed: true
+    - id: e16
+      ends:
+      - m10
+      - m17
+      initially_closed: true
+    - id: e17
+      ends:
+      - m10
+      - m18
+      initially_closed: true
+    - id: e18
+      ends:
+      - m11
+      - m19
+      initially_closed: true
+    - id: e19
+      ends:
+      - m11
+      - m20
+      initially_closed: true
+    - id: e20
+      ends:
+      - m12
+      - m21
+      initially_closed: true
+    - id: e21
+      ends:
+      - m12
+      - m22
+      initially_closed: true
+    - id: e22
+      ends:
+      - m13
+      - m23
+      initially_closed: true
+    - id: e23
+      ends:
+      - m13
+      - m24
+      initially_closed: true
+    - id: e24
+      ends:
+      - m14
+      - m25
+      initially_closed: true
+    - id: e25
+      ends:
+      - m14
+      - m26
+      initially_closed: true
+    - id: e26
+      ends:
+      - m15
+      - m27
+      initially_closed: true
+    - id: e27
+      ends:
+      - m16
+      - m28
+      initially_closed: true
+    - id: e28
+      ends:
+      - m17
+      - m29
+      initially_closed: true
+    - id: e29
+      ends:
+      - m18
+      - m30
+      initially_closed: true
+  loop_extension:
+    milestone: M3
+    paths:
+    - id: e30
+      ends:
+      - m03
+      - m08
+      initially_closed: true
+      structural_joint: null
+    physical_cable_simulation: false
+handling:
+  max_tether_distance_m: 15
+  max_group_mass_kg: 240
+  max_speed_m_per_s: 2
+  gravity_m_per_s2: 0
+  free_drift_drag: 0
+  brake_target_speed_m_per_s: 0
+  brake_speed_tolerance_m_per_s: 0.01
+  position_tolerance_m: 0.05
+  collision_rule: no passage through intake walls; no score on contact
+intake:
+  capacity_units: 12
+  capacity_scope: per-batch-reset-after-acceptance
+  volume_rule: sum-module-volume-units
+  acceptance: all-or-nothing
+  required_position: entire-group-inside-chamber
+  recoverable_state: detached-and-not-previously-accepted
+  value_rule: sum-module-value-once-per-mission
+  repeat_confirmation: ignored-with-already-processing-or-already-recovered-reason
+experience_trial:
+  participant_count: 5
+  minimum_complete_participants: 4
+  participant_criteria: desktop keyboard and mouse users, first exposure to this product
+  allowed_help: product instructions only
+  effective_duration_min_seconds: 480
+  effective_duration_max_seconds: 720
+  required_actions:
+  - enter
+  - isolate
+  - cut
+  - tether
+  - recover
+  - normal-exit
+  measurement_status: not-measured
+cases:
+  detach:
+    source_on: false
+    cut_joints:
+    - s07
+    expected_detached_groups:
+    - &id001
+      - m08
+      - m13
+      - m14
+      - m23
+      - m24
+      - m25
+      - m26
+    expected_fixed_modules:
+    - m01
+    - m02
+    - m03
+    - m04
+    - m05
+    - m06
+    - m07
+    - m09
+    - m10
+    - m11
+    - m12
+    - m15
+    - m16
+    - m17
+    - m18
+    - m19
+    - m20
+    - m21
+    - m22
+    - m27
+    - m28
+    - m29
+    - m30
+    expected_remaining_joint_ids:
+    - s01
+    - s02
+    - s03
+    - s04
+    - s05
+    - s06
+    - s08
+    - s09
+    - s10
+    - s11
+    - s12
+    - s13
+    - s14
+    - s15
+    - s16
+    - s17
+    - s18
+    - s19
+    - s20
+    - s21
+    - s22
+    - s23
+    - s24
+    - s25
+    - s26
+    - s27
+    - s28
+    - s29
+  cut_rejection:
+    probes:
+    - target: s01
+      reason: protected-joint
+    - target: s07-after-successful-cut
+      reason: already-cut
+    - target: m13-surface-away-from-joint
+      reason: not-a-cut-joint
+    expected_value_delta: 0
+    expected_new_cut_count: 0
+  live_cut:
+    initial_source_on: true
+    target_joint: s07
+    initial_powered_modules: &id002
+    - m01
+    - m02
+    - m03
+    - m04
+    - m05
+    - m06
+    - m07
+    - m08
+    - m09
+    - m10
+    - m11
+    - m12
+    - m13
+    - m14
+    - m15
+    - m16
+    - m17
+    - m18
+    - m19
+    - m20
+    - m21
+    - m22
+    - m23
+    - m24
+    - m25
+    - m26
+    - m27
+    - m28
+    - m29
+    - m30
+    first_result: live-path-rejected
+    actions:
+    - try-cut-s07
+    - source-off
+    - cut-s07
+    expected_powered_modules: []
+    expected_detached_groups:
+    - *id001
+  branch_isolation:
+    source_on: true
+    open_paths:
+    - e05
+    expected_unpowered_modules:
+    - m06
+    - m07
+    - m08
+    - m13
+    - m14
+    - m23
+    - m24
+    - m25
+    - m26
+    expected_powered_modules:
+    - m01
+    - m02
+    - m03
+    - m04
+    - m05
+    - m09
+    - m10
+    - m11
+    - m12
+    - m15
+    - m16
+    - m17
+    - m18
+    - m19
+    - m20
+    - m21
+    - m22
+    - m27
+    - m28
+    - m29
+    - m30
+    expected_door: unpowered-manual-release-available
+    expected_cut_joints: []
+  tether:
+    group:
+    - m13
+    - m23
+    - m24
+    group_mass_kg: 60
+    start_distance_m: 10
+    release_velocity_m_per_s:
+    - 1
+    - 0
+    - 0
+    drift_seconds: 2
+    expected_displacement_m:
+    - 2
+    - 0
+    - 0
+    brake_after_drift: true
+    rejections:
+    - selection:
+      - m01
+      - m02
+      reason: anchored
+    - selection: group
+      distance_m: 16
+      reason: out-of-range
+    - selection: detached-group-over-mass-limit
+      mass_kg: 250
+      reason: too-heavy
+    - selection: already-recovered-group
+      reason: already-recovered
+  intake_oversize:
+    group: *id001
+    group_volume_units: 14
+    expected_first_result: capacity-exceeded
+    expected_first_value: 0
+    subsequent_cuts:
+    - s12
+    - s13
+    accepted_batches:
+    - - m13
+      - m23
+      - m24
+    - - m14
+      - m25
+      - m26
+    batch_volume_units:
+    - 6
+    - 6
+    batch_values:
+    - 300
+    - 300
+    expected_value: 600
+    remaining_detached_modules:
+    - m08
+  intake_once:
+    group:
+    - m13
+    - m23
+    - m24
+    confirm_attempts: 3
+    attempt_stages:
+    - accepted
+    - processing
+    - already-recovered
+    read_only_replays: 2
+    expected_accepted_batches: 1
+    expected_value: 300
+    expected_recovered_modules:
+    - m13
+    - m23
+    - m24
+  escape:
+    source_on: false
+    door_initially_closed: true
+    blocking_group:
+    - m08
+    recovered_modules: &id003
+    - m13
+    - m14
+    - m23
+    - m24
+    - m25
+    - m26
+    expected_value: 600
+    manual_door_access: both-sides
+    cancel_emergency: no-state-change
+    confirmed_emergency_result: emergency_exit
+    unrecovered_blocker_value_awarded: 0
+    safe_location: dock
+  endings:
+    probes:
+    - exit: normal
+      recovered_value: 600
+      expected: completed
+    - exit: normal
+      recovered_value: 300
+      expected: early_exit
+    - exit: emergency
+      recovered_value: 600
+      expected: emergency_exit
+    - exit: time-limit
+      recovered_value: 600
+      expected: timeout
+    pause_sample_seconds: 30
+    expected_pause_timer_delta: 0
+  power_loop:
+    source_on: true
+    extension_enabled: true
+    steps:
+    - action: open-e05
+      expected_powered_modules: *id002
+    - action: try-cut-s07
+      expected_result: live-path-rejected
+      expected_cut_joints: []
+    - action: open-e30
+      expected_powered_modules:
+      - m01
+      - m02
+      - m03
+      - m04
+      - m05
+      - m09
+      - m10
+      - m11
+      - m12
+      - m15
+      - m16
+      - m17
+      - m18
+      - m19
+      - m20
+      - m21
+      - m22
+      - m27
+      - m28
+      - m29
+      - m30
+    - action: close-e05
+      expected_powered_modules: *id002
+    baseline_regressions:
+    - live_cut
+    - branch_isolation
+    - detach
+    - intake_once
+replay:
+  repeat_count: 3
+  replay_scope: accepted business events and recorded rejections; no per-frame physics equivalence
+  canonical_run:
+    initial_template: ship
+    events:
+    - source-off
+    - cut-s07
+    - cut-s12
+    - cut-s13
+    - accept-m13-m23-m24
+    - repeat-accept-m13-m23-m24-rejected
+    - accept-m14-m25-m26
+    - normal-exit
+    expected_value: 600
+    expected_recovered_modules: *id003
+    expected_remaining_detached_groups:
+    - - m08
+    expected_remaining_fixed_modules:
+    - m01
+    - m02
+    - m03
+    - m04
+    - m05
+    - m06
+    - m07
+    - m09
+    - m10
+    - m11
+    - m12
+    - m15
+    - m16
+    - m17
+    - m18
+    - m19
+    - m20
+    - m21
+    - m22
+    - m27
+    - m28
+    - m29
+    - m30
+    expected_powered_modules: []
+    expected_result: completed
+visual_checks:
+  state_samples:
+  - anchored
+  - detached
+  - powered
+  - unpowered
+  - processing
+  - recovered
+  view_samples:
+  - dock-facing-hull
+  - joint-closeup
+  - inside-door-each-side
+  - intake-full-group
+  lighting_samples:
+  - normal
+  - dim
+  checklist:
+  - ship silhouette and detached group are distinct
+  - joint boundaries remain visible
+  - no obvious intersection hides a joint or chamber wall
+  - door manual release can be identified
+  - intake boundary and capacity are readable
+  - HUD labels do not overlap or clip
+  - power and selection effects do not obscure the target
+  - non-colour state cues remain sufficient
+  reference_art_id: null
+  approval_status: pending-owner
+verification_profile:
+  status: unlocked-not-measured
+  required_before_approval:
+  - device_model
+  - cpu
+  - gpu
+  - memory_gib
+  - os_full_version
+  - browser_name
+  - browser_full_version
+  - reference_route_id
+  - reference_art_id
+  device_model: null
+  cpu: null
+  gpu: null
+  memory_gib: null
+  os_full_version: null
+  browser_name: null
+  browser_full_version: null
+  viewport_pixels:
+  - 1920
+  - 1080
+  device_pixel_ratio: 1
+  quality: standard-all-essential-effects-on
+  power_mode: plugged-in-performance
+  scene: complete ship, all modules visible, source on, alternating selection and tether of a detached group
+  reference_route_id: null
+  warmup_seconds: 30
+  sample_seconds: 120
+  repeat_count: 3
+  max_ready_seconds: 8
+  frame_time_p95_max_ms: 33.4
+  frame_time_p99_max_ms: 50
+  measurement_result: null

@@ -1,0 +1,985 @@
+content: spellcraft-business-scenarios
+status: draft
+expected_results: proposed-not-reference-validated
+units:
+  time: seconds
+  distance: metres
+  damage: health-points
+  mana: mana-points
+catalog:
+  base_element_count: 4
+  base_node_type_count: 9
+  base:
+  - id: projectile
+    name: 投射物
+    cost: 4
+  - id: fire
+    name: 火
+    cost: 6
+  - id: water
+    name: 水
+    cost: 5
+  - id: ice
+    name: 冰
+    cost: 6
+  - id: lightning
+    name: 電
+    cost: 8
+  - id: split
+    name: 分裂
+    cost: 4
+  - id: homing
+    name: 追蹤
+    cost: 3
+  - id: delay
+    name: 延遲
+    cost: 2
+  - id: on_hit
+    name: 命中觸發
+    cost: 6
+  extension:
+  - id: oil
+    name: 油
+    cost: 5
+    milestone: M3
+composition:
+  max_nodes: 12
+  max_stages: 3
+  max_cost: 100
+  root_trigger_count: 1
+  split_multiplier: 3
+  allowed_modifiers:
+  - split
+  - homing
+  - delay
+  max_each_modifier_per_stage: 1
+  allowed_delay_seconds:
+  - 0
+  - 0.25
+  - 0.5
+  - 1
+  default_delay_seconds: 0.5
+  stage_shape:
+  - projectile
+  - exactly-one-element
+  - optional-unique-modifiers
+  - optional-terminal-on_hit-with-child-stage
+  cost_rule: sum over stages of node-price-sum times worst emissions; worst emissions equals parent worst emissions
+    times local split multiplier
+  error_priority:
+  - unknown-node
+  - cycle-or-merge
+  - missing-or-multiple-element
+  - invalid-stage-order
+  - missing-child-stage
+  - node-limit
+  - stage-limit
+  - repeated-modifier
+  - cost-limit
+  - cooldown
+  - insufficient-mana
+arena:
+  cast_origin_m:
+  - 0
+  - -10
+  target_radius_m: 0.4
+  seed: 1729
+  business_randomness: none
+  cast_cooldown_seconds: 0.25
+  initial_state:
+    mana: 100
+    targets:
+    - id: T01
+      position_m:
+      - 0
+      - 0
+      health: 150
+    - id: T02
+      position_m:
+      - 3
+      - 0
+      health: 100
+    - id: T03
+      position_m:
+      - 0
+      - 4
+      health: 100
+    - id: T04
+      position_m:
+      - 0
+      - 8
+      health: 100
+    all_statuses: []
+    projectiles: []
+    pending_events: []
+    oil_tiles: []
+    elapsed_seconds: 0
+  mana_regeneration_per_second: 0
+  health_floor: 0
+  death_rule: remove target from hit selection, clear statuses and cancel future periodic damage for that target
+  reset_rule: restore initial state, cancel all active and pending effects, retain old log read-only
+  initial_status_timing: case-provided initial statuses begin with full duration at case time zero unless specified
+    otherwise
+projectile:
+  speed_m_per_second: 10
+  max_lifetime_seconds: 3
+  max_travel_distance_m: 30
+  split_angles_degrees:
+  - -15
+  - 0
+  - 15
+  homing_radius_m: 12
+  homing_selection: nearest alive target from emission origin, tie by target id
+  homing_steering: during each event step, head directly toward the locked target current position without exceeding
+    projectile speed
+  on_target_death: continue current heading without reacquisition
+  maximum_direct_hits: 1
+  child_origin: fixed round cast origin
+  child_aim: original hit target position captured at trigger time
+  child_delay_origin: next event step after parent hit
+  dead_child_target: suppress with target-dead reason
+  miss: expire without child trigger
+budgets:
+  emissions_per_cast: 12
+  secondary_propagations_per_cast: 4
+  secondary_consumers:
+  - each-conduction-recipient
+  - each-oil-tile-ignition
+  overflow: suppress new event, keep prior effects, log budget-exhausted, no refund
+  indirect_hits_trigger_children: false
+elements:
+  fire:
+    direct_damage: 20
+    wet_damage: 10
+    burn_damage_per_tick: 5
+    burn_tick_interval_seconds: 1
+    burn_duration_seconds: 3
+    burn_tick_offsets_seconds:
+    - 1
+    - 2
+    - 3
+    wet_rule: consume wet, reduced damage, no burn and no oil ignition
+    frozen_rule: remove frozen before checking wet
+    chilled_rule: chilled persists unless naturally expired
+    refresh_rule: replace remaining burn schedule with new tick offsets
+  water:
+    direct_damage: 0
+    wet_duration_seconds: 4
+    burning_rule: remove burning and cancel future target burn ticks
+    frozen_rule: preserve frozen
+    oil_rule: remove oil and oil fire only on hit tile
+  ice:
+    direct_damage: 10
+    frozen_duration_seconds: 2
+    chilled_duration_seconds: 2
+    frozen_movement_multiplier: 0
+    chilled_movement_multiplier: 0.5
+    normal_movement_multiplier: 1
+    burning_rule: extinguish before wet check
+    wet_rule: consume wet, clear chilled and apply frozen
+    dry_rule: refresh frozen if already frozen, otherwise apply chilled
+  lightning:
+    direct_damage: 15
+    wet_direct_damage: 30
+    conduction_damage: 30
+    conduction_radius_m: 4
+    max_secondary_targets_per_direct_hit: 2
+    secondary_selection: still-wet alive targets, distance from struck target then target id, exclude struck target
+    wet_rule: consume wet on direct and secondary victims
+    secondary_recursion: false
+    other_statuses: preserve burning, frozen and chilled
+event_order:
+  step_seconds: 0.05
+  phases:
+  - periodic-damage-due-including-final-tick
+  - expire-statuses-at-this-time
+  - ordered-direct-hits
+  - for-each-hit-complete-status-transition
+  - for-each-hit-complete-secondary-propagations
+  - schedule-child-for-next-event-step-or-later
+  direct_hit_ties:
+  - accepted-cast-order
+  - stage-order
+  - projectile-order
+  - target-id
+  same_kind_status: refresh expiration; never stack intensity
+  same_time_death: clear target statuses and cancel all its remaining periodic events before processing next event
+  oil_periodic_order: target burning, then oil-cell damage; each with own cause
+recipes:
+  valid:
+    water_bolt:
+      stages:
+      - nodes:
+        - projectile
+        - water
+        worst_emissions: 1
+        stage_cost: 9
+      node_count: 2
+      cost: 9
+      remaining_mana: 91
+    wet_then_spark:
+      stages:
+      - nodes:
+        - projectile
+        - water
+        - on_hit
+        worst_emissions: 1
+        stage_cost: 15
+      - nodes:
+        - projectile
+        - lightning
+        worst_emissions: 1
+        stage_cost: 12
+      node_count: 5
+      cost: 27
+      remaining_mana: 73
+    split_delayed_homing_fire:
+      stages:
+      - nodes:
+        - projectile
+        - fire
+        - split
+        - homing
+        - delay
+        delay_seconds: 0.5
+        worst_emissions: 3
+        stage_cost: 57
+      node_count: 5
+      cost: 57
+      remaining_mana: 43
+    split_lightning:
+      stages:
+      - nodes:
+        - projectile
+        - lightning
+        - split
+        worst_emissions: 3
+        stage_cost: 48
+      node_count: 3
+      cost: 48
+      remaining_mana: 52
+  invalid:
+  - id: unknown-node
+    stages:
+    - - projectile
+      - teleport
+    reason: unknown-node
+  - id: cycle
+    nodes:
+    - a:projectile
+    - b:water
+    - c:on_hit
+    connections:
+    - a to b
+    - b to c
+    - c to a
+    reason: cycle-or-merge
+  - id: merge
+    nodes:
+    - a:projectile
+    - b:water
+    - c:ice
+    - d:on_hit
+    connections:
+    - a to b
+    - a to c
+    - b to d
+    - c to d
+    reason: cycle-or-merge
+  - id: missing-element
+    stages:
+    - - projectile
+      - split
+    reason: missing-or-multiple-element
+  - id: multiple-element
+    stages:
+    - - projectile
+      - water
+      - fire
+    reason: missing-or-multiple-element
+  - id: modifier-before-element
+    stages:
+    - - projectile
+      - split
+      - water
+    reason: invalid-stage-order
+  - id: dangling-trigger
+    stages:
+    - - projectile
+      - water
+      - on_hit
+    reason: missing-child-stage
+  - id: too-many-nodes
+    stages:
+    - - projectile
+      - water
+      - split
+      - homing
+      - delay
+      - on_hit
+    - - projectile
+      - water
+      - split
+      - homing
+      - delay
+      - on_hit
+    - - projectile
+      - water
+    node_count: 14
+    reason: node-limit
+  - id: too-many-stages
+    stages:
+    - - projectile
+      - water
+      - on_hit
+    - - projectile
+      - water
+      - on_hit
+    - - projectile
+      - water
+      - on_hit
+    - - projectile
+      - water
+    node_count: 11
+    reason: stage-limit
+  - id: duplicate-split
+    stages:
+    - - projectile
+      - water
+      - split
+      - split
+    reason: repeated-modifier
+  - id: over-cost
+    stages:
+    - - projectile
+      - fire
+      - split
+      - homing
+      - delay
+      - on_hit
+    - - projectile
+      - lightning
+      - split
+      - homing
+      - delay
+    node_count: 11
+    calculated_cost: 264
+    stage_costs:
+    - 75
+    - 189
+    reason: cost-limit
+  extension:
+    oil_bolt:
+      stages:
+      - nodes:
+        - projectile
+        - oil
+        worst_emissions: 1
+        stage_cost: 9
+      node_count: 2
+      cost: 9
+      remaining_mana: 91
+trials:
+  extinguish:
+    start: arena.initial_state
+    goal: hit T01 with fire then water before first burn tick
+    expected_health: 130
+    expected_statuses:
+    - wet
+    forbidden: target burn tick before water
+  conduct:
+    start: arena.initial_state
+    goal: make T01 T02 T03 wet, then strike T01 with lightning
+    expected_health:
+      T01: 120
+      T02: 70
+      T03: 70
+      T04: 100
+    expected_wet_targets: []
+    expected_damage_recipients:
+    - T01
+    - T02
+    - T03
+  freeze:
+    start: arena.initial_state
+    goal: water then ice on T01 while wet
+    expected_health: 140
+    expected_statuses:
+    - frozen
+    expected_movement_multiplier: 0
+experience_trial:
+  participant_count: 5
+  minimum_complete_participants: 4
+  participant_criteria: first exposure to product, desktop keyboard and mouse users
+  required_trials:
+  - extinguish
+  - conduct
+  - freeze
+  max_active_seconds: 600
+  allowed_help: product instructions only
+  explanation_check: identify source node, prior wet or burning state, and resulting damage or status for selected
+    event
+  measurement_status: not-measured
+cases:
+  resources:
+    insufficient_mana:
+      recipe: water_bolt
+      available_mana: 8
+      reason: insufficient-mana
+      expected_mana: 8
+    cooldown:
+      recipe: water_bolt
+      seconds_since_last_accepted_cast: 0.1
+      available_mana: 91
+      reason: cooldown
+      expected_mana: 91
+  flight:
+    recipe: split_delayed_homing_fire
+    cast_origin_m:
+    - 0
+    - 0
+    targets:
+    - id: T01
+      position_m:
+      - -1
+      - 10
+      alive: true
+    - id: T02
+      position_m:
+      - 1
+      - 10
+      alive: true
+    accepted_cast_time: 0
+    expected_emission_time: 0.5
+    expected_emission_count: 3
+    expected_angles_degrees:
+    - -15
+    - 0
+    - 15
+    expected_locked_target_ids:
+    - T01
+    - T01
+    - T01
+    target_death_time: 0.6
+    dead_target_id: T01
+    expected_reacquisition: false
+    miss_path_expected_expiration_time: 3.5
+    child_probe:
+      recipe: wet_then_spark
+      target_id: T01
+      target_position_m:
+      - 0
+      - 10
+      parent_hit_time: 1
+      expected_child_origin_m:
+      - 0
+      - 0
+      expected_child_aim_m:
+      - 0
+      - 10
+      earliest_child_emission_time: 1.05
+      dead_at_trigger_result: target-dead
+  reactions:
+    extinguish:
+      start: arena.initial_state
+      impacts:
+      - time: 0
+        element: fire
+        target: T01
+      - time: 0.5
+        element: water
+        target: T01
+      snapshots:
+      - time: 0
+        health: 130
+        statuses:
+        - burning
+      - time: 0.5
+        health: 130
+        statuses:
+        - wet
+      - time: 3
+        health: 130
+        statuses:
+        - wet
+    conduct:
+      start: arena.initial_state
+      initial_wet_targets:
+      - T02
+      - T03
+      impacts:
+      - time: 0
+        element: water
+        target: T01
+      - time: 0.1
+        element: lightning
+        target: T01
+      expected_health:
+        T01: 120
+        T02: 70
+        T03: 70
+        T04: 100
+      expected_secondary_targets:
+      - T02
+      - T03
+      expected_wet_targets: []
+      expected_damage_events: 3
+      expected_secondary_budget_remaining: 2
+    freeze_then_fire:
+      start: arena.initial_state
+      impacts:
+      - time: 0
+        element: water
+        target: T01
+      - time: 0.1
+        element: ice
+        target: T01
+      - time: 0.2
+        element: fire
+        target: T01
+      snapshots:
+      - time: 0.1
+        health: 140
+        statuses:
+        - frozen
+        movement_multiplier: 0
+        frozen_expires_at: 2.1
+      - time: 0.2
+        health: 120
+        statuses:
+        - burning
+        movement_multiplier: 1
+        burn_expires_at: 3.2
+  same_time:
+    target: T01
+    initial_health: 150
+    events:
+    - time: 0
+      element: fire
+      accepted_cast_order: 1
+    - time: 1
+      element: water
+      accepted_cast_order: 2
+    - time: 1
+      element: fire
+      accepted_cast_order: 3
+    expected_event_order_at_time_1:
+    - burn-tick
+    - water-hit-and-extinguish-and-wet
+    - fire-hit-and-consume-wet
+    expected_health_at_time_1: 115
+    expected_statuses_at_time_1: []
+  refresh:
+    target: T01
+    initial_health: 150
+    impacts:
+    - time: 0
+      element: fire
+    - time: 0.5
+      element: fire
+    expected_burn_ticks:
+    - 1.5
+    - 2.5
+    - 3.5
+    snapshots:
+    - time: 1
+      health: 110
+      statuses:
+      - burning
+    - time: 1.5
+      health: 105
+      statuses:
+      - burning
+    - time: 2.5
+      health: 100
+      statuses:
+      - burning
+    - time: 3.5
+      health: 95
+      statuses: []
+  chain_budget:
+    recipe: split_lightning
+    precondition: use the following direct-impact sequence; projectile flight is separately covered by cases.flight
+    initial_targets:
+    - id: A1
+      position_m:
+      - -6
+      - 0
+      health: 100
+      wet: true
+    - id: A2
+      position_m:
+      - -6
+      - 1
+      health: 100
+      wet: true
+    - id: A3
+      position_m:
+      - -6
+      - 2
+      health: 100
+      wet: true
+    - id: B1
+      position_m:
+      - 0
+      - 0
+      health: 100
+      wet: true
+    - id: B2
+      position_m:
+      - 0
+      - 1
+      health: 100
+      wet: true
+    - id: B3
+      position_m:
+      - 0
+      - 2
+      health: 100
+      wet: true
+    - id: C1
+      position_m:
+      - 6
+      - 0
+      health: 100
+      wet: true
+    - id: C2
+      position_m:
+      - 6
+      - 1
+      health: 100
+      wet: true
+    - id: C3
+      position_m:
+      - 6
+      - 2
+      health: 100
+      wet: true
+    direct_impact_order:
+    - A1
+    - B1
+    - C1
+    accepted_secondary_targets:
+    - A2
+    - A3
+    - B2
+    - B3
+    suppressed_secondary_targets:
+    - C2
+    - C3
+    suppression_reason: secondary-budget-exhausted
+    expected_health:
+      A1: 70
+      A2: 70
+      A3: 70
+      B1: 70
+      B2: 70
+      B3: 70
+      C1: 70
+      C2: 100
+      C3: 100
+    expected_wet_targets:
+    - C2
+    - C3
+    expected_direct_hits: 3
+    expected_secondary_hits: 4
+    expected_secondary_budget_remaining: 0
+    expected_emission_budget_remaining: 9
+    expected_total_damage: 210
+    direct_impact_times:
+    - 1
+    - 1.1
+    - 1.2
+  editing:
+    start_recipe: water_bolt
+    operations:
+    - action: append-fire-element
+      expected: missing-or-multiple-element
+      can_cast: false
+    - action: remove-extra-fire
+      expected_cost: 9
+      can_cast: true
+    - action: append-split
+      expected_cost: 39
+      can_cast: true
+    - action: undo
+      expected_nodes:
+      - projectile
+      - water
+      expected_cost: 9
+    - action: redo
+      expected_nodes:
+      - projectile
+      - water
+      - split
+      expected_cost: 39
+    - action: move-node-on-canvas
+      expected_nodes:
+      - projectile
+      - water
+      - split
+      expected_cost: 39
+  trace:
+    cases:
+    - reactions.conduct
+    - chain_budget
+    child_recipe: wet_then_spark
+    required_fields:
+    - event-time
+    - cast-identity
+    - stage-or-reaction
+    - source-node
+    - target-identity
+    - health-before-after
+    - statuses-before-after
+    - mana-before-after
+    - emission-budget-before-after
+    - secondary-budget-before-after
+    - suppression-reason-if-any
+    step_action: advance exactly one ordered causal event
+    reset_probe: pending delayed projectile and active target burn
+  saved_spells:
+    valid_recipe: wet_then_spark
+    valid_name: 雨後閃光
+    draft_recipe: dangling-trigger
+    draft_name: 待完成的雨
+    overwrite_confirmation: display saved and replacement spell names and node sequences
+    cancel_result: original-content-unchanged
+  oil:
+    spread:
+      recipe: oil_bolt
+      origin_cell:
+      - 2
+      - 2
+      impact_time: 0
+      time_origin: 已完成飛行、在此格發生命中的時刻；本案例只驗證命中後鋪展，飛行另由 cases.flight 驗證。
+      snapshots:
+      - time: 0
+        oil_cells:
+        - - 2
+          - 2
+      - time: 0.5
+        oil_cells:
+        - - 2
+          - 2
+        - - 2
+          - 1
+      - time: 1
+        oil_cells:
+        - - 2
+          - 2
+        - - 2
+          - 1
+        - - 3
+          - 2
+      - time: 1.5
+        oil_cells:
+        - - 2
+          - 2
+        - - 2
+          - 1
+        - - 3
+          - 2
+        - - 2
+          - 3
+    ignite:
+      precondition: spread complete, dry target remains at origin cell
+      target_initial_health: 100
+      fire_hit_time: 2
+      expected_ignited_cells:
+      - - 2
+        - 2
+      - - 2
+        - 1
+      - - 2
+        - 3
+      - - 3
+        - 2
+      expected_secondary_budget_remaining: 0
+      expected_health_at_time_2: 80
+      expected_health_at_time_3: 71
+      expected_health_at_time_5: 53
+      expected_oil_cells_after_time_5: []
+    water:
+      precondition: ignite case through time 2
+      water_hit_time: 2.5
+      water_hit_cell:
+      - 2
+      - 2
+      expected_remaining_burning_cells:
+      - - 2
+        - 1
+      - - 2
+        - 3
+      - - 3
+        - 2
+      expected_target_health_at_time_3: 80
+      expected_target_statuses_at_time_3:
+      - wet
+    element_probes:
+    - element: fire
+      target_initial_health: 100
+      target_initial_statuses:
+      - wet
+      expected_health: 90
+      expected_tile: oil-unlit
+      expected_statuses: []
+    - element: ice
+      target_initial_health: 100
+      target_initial_statuses: []
+      expected_health: 90
+      expected_tile: oil-unlit
+      expected_statuses:
+      - chilled
+    - element: lightning
+      target_initial_health: 100
+      target_initial_statuses: []
+      expected_health: 85
+      expected_tile: oil-unlit
+      expected_statuses: []
+    boundary:
+      origin_cell:
+      - 0
+      - 0
+      expected_oil_cells_after_spread:
+      - - 0
+        - 0
+      - - 1
+        - 0
+      - - 0
+        - 1
+      outside_cells_accepted: 0
+oil:
+  milestone: M3
+  grid_size_cells:
+  - 5
+  - 5
+  cell_size_m: 1
+  direct_damage: 0
+  max_spread_cells_per_cast: 4
+  spread_interval_seconds: 0.5
+  candidate_offsets_in_order:
+  - - 0
+    - -1
+  - - 1
+    - 0
+  - - 0
+    - 1
+  - - -1
+    - 0
+  spread_origin: original hit cell only; inspect direct neighbours once, do not recurse
+  out_of_bounds_candidate: skip without consuming cell allowance or a waiting interval
+  occupied_unlit_cell: refresh expiry and consume spread allowance; each accepted oil cast retains its own bounded
+    schedule
+  occupied_burning_cell: consume allowance without refreshing fire duration or scheduling new ignition
+  unlit_duration_seconds: 6
+  burn_duration_seconds: 3
+  burn_tick_interval_seconds: 1
+  burn_tick_offsets_seconds:
+  - 1
+  - 2
+  - 3
+  damage_per_tick: 4
+  ignition_order: hit cell first, then breadth-first adjacent oil cells, candidates sorted by x then y, visit each
+    once
+  fire_rehit_on_burning_cell: normal target elemental damage; no oil fire refresh
+  burn_expiry: remove oil tile after its final tick
+  water: remove only hit tile, cancel its oil damage, extinguish hit target
+  ice: no oil change
+  lightning: no oil ignition
+  legacy_regressions:
+  - recipes.valid
+  - recipes.invalid
+  - cases.resources
+  - cases.flight
+  - cases.reactions
+  - cases.same_time
+  - cases.refresh
+  - cases.chain_budget
+  - cases.editing
+  - cases.saved_spells
+  - trials
+replay:
+  repeat_count: 3
+  canonical_cases:
+  - reactions.conduct
+  - same_time
+  - refresh
+  - chain_budget
+  regression_sets:
+  - recipes.valid
+  - recipes.invalid
+  - cases.resources
+  - cases.flight
+  - cases.reactions
+  - cases.same_time
+  - cases.refresh
+  - cases.chain_budget
+  business_comparison:
+  - mana
+  - health
+  - statuses-with-expiration
+  - targets
+  - ordered-events
+  - budget-values
+  - suppression-reasons
+  - trial-result
+  excluded_comparison: particle shape and per-frame visual identity
+visual_checks:
+  reference_art_id: null
+  approval_status: pending-owner
+  samples:
+  - all-base-elements
+  - wet-lightning-chain
+  - fire-water-extinguish
+  - frozen-and-chilled
+  - illegal-link
+  - selected-causal-event
+  - dense-chain-budget-case
+  - oil-spread-and-fire-in-M3
+  checklist:
+  - node names and connections are not clipped or obscured
+  - direction and target of projectiles remain visible
+  - elements remain distinguishable without colour
+  - health and status labels do not overlap
+  - invalid combination identifies exact source of error
+  - selected event highlights the correct node and target
+  - indirect damage has visible source and cause
+  - effects do not hide required controls or event text
+verification_profile:
+  status: unlocked-not-measured
+  required_before_approval:
+  - device_model
+  - cpu
+  - gpu
+  - memory_gib
+  - os_full_version
+  - browser_name
+  - browser_full_version
+  - reference_art_id
+  - load_recording_id
+  device_model: null
+  cpu: null
+  gpu: null
+  memory_gib: null
+  os_full_version: null
+  browser_name: null
+  browser_full_version: null
+  viewport_pixels:
+  - 1920
+  - 1080
+  device_pixel_ratio: 1
+  quality: standard-all-essential-effects-on
+  power_mode: plugged-in-performance
+  workload_case: cases.chain_budget with all targets, source markers and expanded causal trace
+  workload_cycle_seconds: 4
+  cycle_action: reset fixture and repeat same legal spell and target setup
+  load_recording_id: null
+  warmup_seconds: 30
+  sample_seconds: 120
+  repeat_count: 3
+  max_ready_seconds: 5
+  input_feedback_p95_max_ms: 100
+  frame_time_p95_max_ms: 33.4
+  frame_time_p99_max_ms: 50
+  measurement_result: null
