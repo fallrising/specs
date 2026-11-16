@@ -3,7 +3,7 @@ product: sanguo-cards
 title: 群雄・三國卡牌（暫名）
 status: approved
 impl_repos: []
-desk_cards: [T-0453]
+desk_cards: [T-0454]
 ---
 
 # 群雄・三國卡牌（暫名）
@@ -14,7 +14,7 @@ desk_cards: [T-0453]
 | --- | --- |
 | 狀態 | M1 approved（2026-11-17）；M2、M3 draft |
 | 實作 repo | 未建立（建議 `fallrising/sanguo-cards`） |
-| desk 卡 | T-0453（M1） |
+| desk 卡 | T-0454（M1） |
 | 業務指定技術 | three.js（C-01）、純靜態網站（C-02） |
 
 ## 文件
