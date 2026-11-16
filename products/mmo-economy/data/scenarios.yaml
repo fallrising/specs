@@ -7,6 +7,7 @@ units:
 baseline:
   seed: 20261116
   horizon_days: 90
+  max_horizon_days: 90
   day_hours: 24
   first_day_number: 1
   max_actors: 1000
@@ -49,6 +50,11 @@ recipes:
 behavior:
   decision_order: 每日按職業清單順序，再按角色編號；基準策略不含隨機抽樣，seed作情境識別，評測以實際輸入變更覆蓋不同情境，不宣稱僅改seed會改變結果。
   phase_order: [expiry, job_completion, quest_reward, relist, purchase_and_start_work, consumption, report]
+  daily_schedule:
+    phase_hour: 每個遊戲日的第0小時（第d日為小時(d-1)*24）依phase_order執行一次；同一階段內依decision_order。
+    job_settlement: 採集與製造都是工作。產出入庫與修理費在工作的完成小時結算，不等到下一日；下一日的job_completion階段只確認沒有逾期未結算的工作。當日完成的產出最早在下一日的relist與purchase_and_start_work階段使用。
+    gathering_start: 採集者在purchase_and_start_work階段開始當日採集，受max_jobs_per_day限制。
+    scheduled_mode_hours: 排定決策模式的動作可指定任意整數小時；同一小時先結算到期與已完成的工作，再依actions列出的順序執行。
   gathering: {hours: 6, output_qty: 8, max_jobs_per_day: 1}
   manufacturing:
     max_jobs_per_day: 1
@@ -62,7 +68,7 @@ behavior:
     equipment_consumption_interval_days: 10
     equipment_units_each: 1
     unfilled_demand: 記錄未滿足，不借款、不累積補購；裝備只在第10日及其倍數提出當日需求。
-  repair: {fee_per_completed_job: 10, insufficient_cash: 可支付多少就銷毀多少，餘額最低零，不形成債務}
+  repair: {fee_per_completed_job: 10, applies_to: [gathering, manufacturing], insufficient_cash: 可支付多少就銷毀多少，餘額最低零，不形成債務}
   listing: 冒險者不出售；製造者對鏈內每種可作投入的商品保留一個配方批次，餘量掛單；採集者全部可用產出掛單。到期未售的非腐敗商品退回，下一日重新定價。保留投入不足時才依決策購買缺額。
   consumption: 當日買到的需求商品於該日消耗階段消耗，不足不補造。
 market:
@@ -132,6 +138,8 @@ perishability:
   item: herb
   lifetime_hours: 24
   equality_rule: 當前時間大於或等於產生時間加壽命即到期。
+  born_at: 採集工作的完成小時；情境初始庫存視為第0小時產生。
+  lot_order: 同一持有者的同種商品依產生時間由舊到新出售、投入與消耗；同批同時到期。
 expiry_case:
   item: herb
   born_hour: 0
@@ -142,11 +150,27 @@ expiry_case:
   purchase_hour: 24
   expected: {buyer_cash: 1000, seller_cash: 0, sellable_units: 0, expired_units: 2, completed_trades: 0, trade_fee: 0}
   prior_job: {recipe: ALC-01, start_hour: 23, end_hour: 27, consumed_herb: 2, expected_essence: 1, additional_expired_inputs: 0}
+restore_case:
+  purpose: AC-EXP-02 的固定存檔情境；不中斷執行與恢復執行必須得到同一終點。
+  base: production_case
+  open_order: {id: ORD-SAVE, seller: miner-001, seller_cash: 0, item: iron_ore, quantity: 2, unit_price: 100, listed_hour: 0, expires_hour: 24}
+  save_hour: 2
+  end_hour: 4
+  expected_at_end:
+    worker: {cash: 490, iron_ore: 0, iron_ingot: 1, unfinished_jobs: 0}
+    open_order: {quantity: 2, escrow_iron_ore: 2, expires_hour: 24}
+    repair_destroyed: 10
+    completed_trades: 0
+regression_digest:
+  purpose: 比較「同一情境的兩次執行」時所稱的關鍵經濟結果；AC-QLT-02 留存、AC-ECO-08 與 AC-EXP-04 比對。
+  per_day: [總現金, 當日發行, 當日銷毀, 各商品成交筆數與成交量, 各商品日終持有與託管總量]
+  at_end: [各角色現金, 各角色各商品持有量, 未完成工作數, 未成交掛單數]
 invalid_cases:
   - {field: unit_price, value: -1, reason: 價格低於允許範圍}
   - {field: quantity, value: 1.5, reason: 數量不是整數}
   - {field: recipe_input, value: nonexistent_item, reason: 配方引用未知商品}
   - {field: horizon_days, value: 0, reason: 模擬期間必須為正且不超過基準上限}
+  - {field: horizon_days, value: 91, reason: 模擬期間必須為正且不超過基準上限}
 performance:
   status: proposed_not_measured
   reference_device: null

@@ -125,7 +125,7 @@ reference_case:
       same_fact_as: e-lan
       acquisition: {location: foyer, action: 查看公示副本, requires: [e-case]}
   exclusion_reasoning:
-    lan: {anchor_evidence: e-lan, earliest_arrival_gallery: 6, misses_crime_tick: true}
+    lan: {anchor_evidence: e-lan, earliest_arrival_gallery: 7, misses_crime_tick: true}
     he: {anchor_evidence: e-he, earliest_arrival_gallery: 6, misses_crime_tick: true}
     mei: {anchor_evidence: e-mei, earliest_arrival_gallery: 7, misses_crime_tick: true}
     wu: {anchor_evidence: e-wu, same_tick_other_location: workshop, misses_crime_tick: true}
@@ -187,13 +187,36 @@ acquisition_routes:
 review_fixture:
   evidence_ids: [e-lan, e-yun-says, e-library-seal]
   visible_fields: [來源, 取得方式, 關聯時間, 原命題, 可靠性類別]
+submission_rules:
+  judged_evidence: 玩家提交時引用、且已取得的可靠證據；證詞可以引用，但不當作限制可行世界的可靠證據。
+  statuses_before_reveal:
+    已被證據支持: 引用的可靠證據下，被指控者是唯一可行兇手
+    尚未被證據證明: 被指控者仍可行，但還有其他可行兇手
+    指控不成立: 引用的可靠證據已排除被指控者
+    證據矛盾: 引用的可靠證據沒有任何可行世界
+  no_answer_leak: 揭曉前的狀態只由引用的證據決定，不讀取真相；對真兇與其他仍可行的嫌疑人顯示相同的「尚未被證據證明」。
+  after_reveal_annotation: 揭曉後才可把先前「尚未被證據證明」且指控對象正是真兇的提交標註為「猜中但未被證據證明」。
 submission_fixtures:
   correct_guess_without_proof:
     suspect: yun
     acquired_set: insufficient
-    expected_status: 猜中但未被證據證明
+    cited: 全部已取得證據
+    expected_status: 尚未被證據證明
+    expected_annotation_after_reveal: 猜中但未被證據證明
     after_acquiring_set: complete
     expected_status_after: 已被證據支持
+  other_feasible_suspect_same_status:
+    suspect: wu
+    acquired_set: insufficient
+    cited: 全部已取得證據
+    expected_status: 尚未被證據證明
+    must_equal_status_of: correct_guess_without_proof
+  excluded_suspect:
+    suspect: lan
+    acquired_set: complete
+    cited: 全部已取得證據
+    expected_status: 指控不成立
+    excluding_evidence_id: e-lan
 reveal_fixture:
   reveal_requires_explicit_action: true
   contents: [真實犯罪事件, 真實角色路徑, 每位其他嫌疑人的排除理由, 證據原紀錄連結]
@@ -263,6 +286,9 @@ generation_batch:
   minimal_distinct_crime_locations: 2
   minimal_distinct_case_signatures: 8
   case_signature: 犯罪場所、犯罪時刻、兇手識別及完整可靠證據的角色/時間/場所命題集合；不含顯示姓名、標題或證據排列。
+  allowed_reliable_fact_kinds: [角色在某時間點位於某場所, 某場所在指定時間點無人]
+  allowed_testimony_kinds: [角色聲稱某角色在某時間點位於某場所]
+  bystander_rule: 犯罪時刻另有嫌疑人與被害者同處犯罪場所的世界，以上述事實種類無法排除該人，視為一次失敗的嘗試並重抽，不得補造事實。
   every_case_requires: [合法真實世界, 可取得的完整線索, 從可靠證據獨立確認唯一兇手, 同輸入重現同案件]
   inconclusive_or_exhausted: 顯示生成或驗證失敗，保留嘗試紀錄，不計入有效案件。
   public_examples_are_not_holdouts: true
