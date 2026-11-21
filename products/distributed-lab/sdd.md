@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # 業務 SDD：分散式實驗室

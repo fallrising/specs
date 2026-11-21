@@ -1,7 +1,7 @@
 ---
 product: distributed-lab
 title: 分散式實驗室
-status: draft
+status: approved
 impl_repos: [fallrising/distributed-lab]
 desk_cards: [T-0453]
 ---
@@ -12,7 +12,7 @@ desk_cards: [T-0453]
 
 | 項目 | 內容 |
 | --- | --- |
-| 狀態 | draft；尚未批准實作 |
+| 狀態 | approved；已批准實作（desk 卡 T-0453 只做 M1） |
 | 實作 repo | [fallrising/distributed-lab](https://github.com/fallrising/distributed-lab) |
 | desk 卡 | T-0453（M1） |
 | 核心承諾 | 線性一致性、重試保留同一邏輯操作、已確認操作不因故障消失 |

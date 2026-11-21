@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 ---
 
 # PRD：分散式實驗室
